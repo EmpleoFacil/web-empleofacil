@@ -72,7 +72,11 @@ export default function JobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
       queryClient.invalidateQueries({ queryKey: ['jobs-summary'] });
+      alert('Estado actualizado con éxito');
     },
+    onError: (error: any) => {
+      alert('Error al actualizar estado: ' + (error.response?.data?.message || error.message));
+    }
   });
 
   const deleteMutation = useMutation({
@@ -80,7 +84,11 @@ export default function JobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
       queryClient.invalidateQueries({ queryKey: ['jobs-summary'] });
+      alert('Vacante eliminada con éxito');
     },
+    onError: (error: any) => {
+      alert('Error al eliminar vacante: ' + (error.response?.data?.message || error.message));
+    }
   });
 
   const handleDelete = (id: string) => {
@@ -278,12 +286,12 @@ export default function JobsPage() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
-                              <Link href={`/jobs/${job.id}`} className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                              <button onClick={() => alert('Página de detalles en construcción')} className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                                 <Eye className="h-4 w-4" />
-                              </Link>
-                              <Link href={`/jobs/${job.id}/edit`} className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                              </button>
+                              <button onClick={() => alert('Página de edición en construcción')} className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                                 <Edit className="h-4 w-4" />
-                              </Link>
+                              </button>
                               {job.status === 'active' ? (
                                 <button
                                   onClick={() => updateStatusMutation.mutate({ id: job.id, status: 'paused' })}
