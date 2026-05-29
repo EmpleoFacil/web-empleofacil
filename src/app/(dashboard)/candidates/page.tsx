@@ -57,7 +57,7 @@ export default function CandidatesPage() {
 
   const { data: companyJobs } = useQuery({
     queryKey: ['company-jobs-filter'],
-    queryFn: () => jobs.getCompanyJobs({ limit: 100 }).then(res => res.data.jobs),
+    queryFn: () => jobs.getCompanyJobs({ limit: 100 }).then(res => res.data.items),
   });
 
   const updateStatusMutation = useMutation({

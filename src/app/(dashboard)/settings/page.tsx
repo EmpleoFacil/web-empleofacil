@@ -61,8 +61,11 @@ export default function SettingsPage() {
   });
 
   const { data: plans } = useQuery({
-    queryKey: ['plans'],
-    queryFn: () => api.get('/companies/plans').then(res => res.data),
+    queryKey: ['company-available-plans'],
+    queryFn: () =>
+      api.get('/companies/plans').then(res =>
+        Array.isArray(res.data) ? res.data : (res.data.items ?? [])
+      ),
   });
 
   const [companyForm, setCompanyForm] = useState({

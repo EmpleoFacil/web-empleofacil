@@ -65,7 +65,10 @@ export default function CandidateDetailPage() {
   });
 
   const createInterviewMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => api.post('/interviews', data),
+    mutationFn: (data: Record<string, unknown>) => {
+      const { modality, ...rest } = data as Record<string, unknown>;
+      return api.post('/interviews', { ...rest, type: modality });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
       setShowInterviewModal(false);

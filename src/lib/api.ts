@@ -31,7 +31,7 @@ api.interceptors.response.use(
 
 export const auth = {
   login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+    api.post('/auth/login', { identifier: email, password }),
   logout: () => {
     Cookies.remove('token');
     window.location.href = '/login';
@@ -45,6 +45,7 @@ export const dashboard = {
 };
 
 export const jobs = {
+  getCategories: () => api.get('/jobs/categories'),
   getCompanyJobs: (params?: Record<string, string | number>) =>
     api.get('/jobs/company', { params }),
   getCompanySummary: () => api.get('/jobs/company/summary'),

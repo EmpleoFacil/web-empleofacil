@@ -22,9 +22,15 @@ interface Interview {
   meetingUrl?: string;
   status: string;
   result?: string;
-  candidate: { id: string; fullName: string; city?: string };
-  job: { id: string; title: string };
-  application?: { id: string };
+  candidate?: { id: string; fullName: string; city?: string };
+  job?: { id: string; title: string };
+  application?: { id: string; job?: { id: string; title: string } };
+}
+
+interface CompanyApplicationOption {
+  id: string;
+  candidate?: { fullName?: string };
+  job?: { title?: string };
 }
 
 const statusColors: Record<string, string> = {
@@ -50,6 +56,7 @@ export default function InterviewsPage() {
   const [filters, setFilters] = useState({ status: '', jobId: '', search: '', dateFrom: '', dateTo: '' });
   const [showFilters, setShowFilters] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
   const [showResultModal, setShowResultModal] = useState<Interview | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -61,20 +68,48 @@ export default function InterviewsPage() {
 
   const { data: interviews, isLoading } = useQuery({
     queryKey: ['interviews', filters],
-    queryFn: () => api.get('/interviews/company', { params: filters }).then(res => res.data),
+    queryFn: () => {
+      const params: Record<string, string> = {};
+      if (filters.status) params.status = filters.status;
+      if (filters.jobId) params.jobId = filters.jobId;
+      if (filters.search.trim()) params.search = filters.search.trim();
+      if (filters.dateFrom) params.dateFrom = filters.dateFrom;
+      if (filters.dateTo) params.dateTo = filters.dateTo;
+
+      return api.get('/interviews/company', { params }).then(res => {
+        const data = res.data;
+        return Array.isArray(data) ? data : (data.items ?? []);
+      });
+    },
   });
 
   const { data: jobs } = useQuery({
     queryKey: ['company-jobs'],
-    queryFn: () => api.get('/jobs/company').then(res => res.data),
+    queryFn: () => api.get('/jobs/company').then(res => res.data.items ?? res.data.jobs ?? []),
+  });
+
+  const { data: companyApplications } = useQuery({
+    queryKey: ['company-applications-for-interviews'],
+    queryFn: () =>
+      api
+        .get('/applications/company', { params: { limit: 100 } })
+        .then(res => res.data.applications ?? []),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => api.post('/interviews', data),
+    mutationFn: (data: Record<string, unknown>) => {
+      const { modality, ...rest } = data as Record<string, unknown>;
+      return api.post('/interviews', { ...rest, type: modality });
+    },
     onSuccess: () => {
+      setCreateError('');
       queryClient.invalidateQueries({ queryKey: ['interviews'] });
       queryClient.invalidateQueries({ queryKey: ['interviews-summary'] });
       setShowNewModal(false);
+    },
+    onError: (err: unknown) => {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setCreateError(apiError.response?.data?.message || 'No se pudo crear la entrevista.');
     },
   });
 
@@ -186,7 +221,7 @@ export default function InterviewsPage() {
                 className="h-10 rounded-lg border border-gray-300 px-3 text-sm"
               >
                 <option value="">Todas las vacantes</option>
-                {jobs?.jobs?.map((job: { id: string; title: string }) => (
+                {jobs?.map((job: { id: string; title: string }) => (
                   <option key={job.id} value={job.id}>{job.title}</option>
                 ))}
               </select>
@@ -195,7 +230,7 @@ export default function InterviewsPage() {
                 Filtros
               </Button>
             </div>
-            <Button onClick={() => setShowNewModal(true)}>
+            <Button onClick={() => { setCreateError(''); setShowNewModal(true); }}>
               <Plus className="h-4 w-4 mr-2" />
               Programar entrevista
             </Button>
@@ -256,15 +291,15 @@ export default function InterviewsPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <span className="text-sm font-medium text-blue-600">{interview.candidate.fullName.charAt(0)}</span>
+                              <span className="text-sm font-medium text-blue-600">{(interview.candidate?.fullName || '?').charAt(0)}</span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{interview.candidate.fullName}</p>
-                              <p className="text-sm text-gray-500">{interview.candidate.city}</p>
+                              <p className="font-medium text-gray-900">{interview.candidate?.fullName || 'Candidato'}</p>
+                              <p className="text-sm text-gray-500">{interview.candidate?.city}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{interview.job.title}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{interview.job?.title || interview.application?.job?.title || 'Vacante'}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           {date.toLocaleDateString('es-NI', { day: '2-digit', month: 'short', year: 'numeric' })}
                           <span className="block text-xs text-gray-500">{date.toLocaleDateString('es-NI', { weekday: 'long' })}</span>
@@ -336,7 +371,7 @@ export default function InterviewsPage() {
                 <Calendar className="mx-auto h-12 w-12 text-gray-300" />
                 <p className="mt-4 text-lg font-medium text-gray-900">No hay entrevistas</p>
                 <p className="mt-1 text-sm text-gray-500">Programa tu primera entrevista para comenzar</p>
-                <Button className="mt-4" onClick={() => setShowNewModal(true)}>
+                <Button className="mt-4" onClick={() => { setCreateError(''); setShowNewModal(true); }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Programar entrevista
                 </Button>
@@ -350,7 +385,9 @@ export default function InterviewsPage() {
       {showNewModal && (
         <InterviewModal
           title="Programar entrevista"
-          onClose={() => setShowNewModal(false)}
+          applications={companyApplications ?? []}
+          errorMessage={createError}
+          onClose={() => { setCreateError(''); setShowNewModal(false); }}
           onSubmit={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
         />
@@ -380,9 +417,11 @@ export default function InterviewsPage() {
   );
 }
 
-function InterviewModal({ title, interview, onClose, onSubmit, isLoading }: { 
+function InterviewModal({ title, interview, applications, errorMessage, onClose, onSubmit, isLoading }: { 
   title: string; 
-  interview?: Interview; 
+  interview?: Interview;
+  applications?: CompanyApplicationOption[];
+  errorMessage?: string;
   onClose: () => void; 
   onSubmit: (data: Record<string, unknown>) => void; 
   isLoading: boolean 
@@ -405,10 +444,27 @@ function InterviewModal({ title, interview, onClose, onSubmit, isLoading }: {
         </div>
         <div className="p-6">
           <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
+            {!interview && errorMessage && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
             {!interview && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID de postulación</label>
-                <input type="text" value={form.applicationId} onChange={e => setForm({ ...form, applicationId: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" required />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Postulacion</label>
+                <select
+                  value={form.applicationId}
+                  onChange={e => setForm({ ...form, applicationId: e.target.value })}
+                  className="w-full h-10 rounded-lg border border-gray-300 px-3"
+                  required
+                >
+                  <option value="">Selecciona una postulacion</option>
+                  {applications?.map((application) => (
+                    <option key={application.id} value={application.id}>
+                      {(application.candidate?.fullName || 'Candidato')} - {(application.job?.title || 'Vacante')}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
             <div>
@@ -465,7 +521,7 @@ function ResultModal({ interview, onClose, onSubmit, isLoading }: {
         </div>
         <div className="p-6">
           <p className="text-sm text-gray-600 mb-4">
-            Entrevista con <strong>{interview.candidate.fullName}</strong> para <strong>{interview.job.title}</strong>
+            Entrevista con <strong>{interview.candidate?.fullName || 'Candidato'}</strong> para <strong>{interview.job?.title || interview.application?.job?.title || 'Vacante'}</strong>
           </p>
           <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
             <div>

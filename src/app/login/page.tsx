@@ -1,8 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Briefcase, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/api';
 import Cookies from 'js-cookie';
@@ -23,132 +24,157 @@ export default function LoginPage() {
     try {
       const res = await auth.login(email, password);
       Cookies.set('token', res.data.accessToken, { expires: 7 });
-      
+
       if (res.data.user.role === 'super_admin') {
         router.push('/admin/dashboard');
       } else {
         router.push('/dashboard');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Credenciales inválidas');
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message || 'Credenciales invalidas');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Form */}
-      <div className="flex-1 flex items-center justify-center px-8">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center">
-              <Briefcase className="h-7 w-7 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">Empleo Fácil</span>
-          </div>
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#eef0f3]">
+      <div className="absolute inset-y-0 left-0 w-[53vw] bg-[linear-gradient(145deg,#060b17_0%,#111827_54%,#1d4ed8_100%)]" />
 
-          <h1 className="text-3xl font-bold text-gray-900">Bienvenido de vuelta</h1>
-          <p className="mt-2 text-gray-600">Ingresa a tu cuenta para continuar</p>
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[1400px] items-center px-5 py-8 sm:px-8 lg:px-10">
+        <div className="grid w-full overflow-hidden rounded-[2rem] bg-white shadow-[0_26px_80px_-42px_rgba(15,23,42,0.55)] lg:grid-cols-[1fr_1fr]">
+          <section className="relative min-h-[500px] bg-[#0a1020] p-4 sm:p-5 lg:min-h-[750px]">
+            <div className="relative flex h-full flex-col overflow-hidden rounded-[1.55rem] bg-[#eaf3ff]">
+              <div className="absolute left-6 top-6 z-[1] text-xs font-semibold text-white">Empleo Facil</div>
+              <div className="absolute right-6 top-5 z-[1] flex items-center gap-3">
+                <a href="/register" className="text-xs font-semibold text-white/90 transition hover:text-white">Registrarse</a>
+                <a href="/register" className="rounded-full border border-white/65 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white hover:text-slate-950">Unirse</a>
+              </div>
 
-          {error && (
-            <div className="mt-6 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Correo electrónico
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@empresa.com"
-                required
-                className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              <Image
+                src="/login-hero.png"
+                alt="Profesional revisando vacantes desde su telefono"
+                width={900}
+                height={900}
+                className="h-full min-h-[500px] w-full object-cover object-center lg:min-h-[750px]"
+                priority
               />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Contraseña
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full h-11 rounded-lg border border-gray-300 px-4 pr-11 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+              <div className="absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_top,rgba(7,13,28,0.82),transparent)]" />
+              <div className="absolute bottom-6 left-6 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-blue-700">
+                  <Briefcase className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Equipo de operaciones</p>
+                  <p className="text-xs text-white/75">Talento verificado</p>
+                </div>
+              </div>
+              <div className="absolute bottom-6 right-6 flex gap-2">
+                <span className="h-9 w-9 rounded-full border border-white/55" />
+                <span className="h-9 w-9 rounded-full border border-white/55" />
               </div>
             </div>
+          </section>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                <span className="text-sm text-gray-600">Recordarme</span>
-              </label>
-              <a href="/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
+          <div className="flex min-h-[500px] items-center justify-center px-6 py-10 sm:px-10 lg:min-h-[750px] lg:px-20">
+            <section className="w-full max-w-md">
+              <div className="mb-12 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
+                    <Briefcase className="h-5 w-5 text-white" />
+                  </div>
+                  <p className="text-lg font-semibold tracking-tight text-slate-950">Empleo Facil</p>
+                </div>
+                <button className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600" type="button">
+                  ES
+                </button>
+              </div>
 
-            <Button type="submit" className="w-full h-11" disabled={loading}>
-              {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                'Iniciar sesión'
+              <h1 className="text-center text-4xl font-semibold text-slate-950">Hola, empresas</h1>
+              <p className="mt-3 text-center text-sm leading-6 text-slate-500">Bienvenido a Empleo Facil.</p>
+
+              {error && (
+                <div className="mt-6 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {error}
+                </div>
               )}
-            </Button>
-          </form>
 
-          <p className="mt-8 text-center text-sm text-gray-600">
-            ¿No tienes cuenta?{' '}
-            <a href="/register" className="font-medium text-blue-600 hover:text-blue-700">
-              Registra tu empresa
-            </a>
-          </p>
-        </div>
-      </div>
+              <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-700">Correo electronico</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tu@empresa.com"
+                    required
+                    className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 transition placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-3 focus:ring-blue-100"
+                  />
+                </div>
 
-      {/* Right Panel - Branding */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-600 to-blue-800 items-center justify-center p-12">
-        <div className="max-w-lg text-center text-white">
-          <h2 className="text-4xl font-bold">Encuentra el talento que necesitas</h2>
-          <p className="mt-4 text-lg text-blue-100">
-            Gestiona tus vacantes, candidatos y procesos de selección desde una sola plataforma.
-          </p>
-          <div className="mt-12 grid grid-cols-3 gap-6 text-center">
-            <div>
-              <p className="text-4xl font-bold">10k+</p>
-              <p className="mt-1 text-sm text-blue-200">Candidatos activos</p>
-            </div>
-            <div>
-              <p className="text-4xl font-bold">500+</p>
-              <p className="mt-1 text-sm text-blue-200">Empresas</p>
-            </div>
-            <div>
-              <p className="text-4xl font-bold">2k+</p>
-              <p className="mt-1 text-sm text-blue-200">Vacantes publicadas</p>
-            </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-700">Contrasena</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="........"
+                      required
+                      className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 pr-11 text-sm text-slate-900 transition placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-3 focus:ring-blue-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 cursor-pointer text-slate-400 transition hover:text-slate-600"
+                      aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <label className="inline-flex items-center gap-2 text-slate-600">
+                    <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    Recordarme
+                  </label>
+                  <a href="/forgot-password" className="font-medium text-blue-700 transition hover:text-blue-600">
+                    Olvidaste tu contrasena?
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-3 py-1 text-xs text-slate-400">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  <span>o</span>
+                  <span className="h-px flex-1 bg-slate-200" />
+                </div>
+
+                <Button type="submit" className="h-11 w-full rounded-full bg-[#ef4444] text-sm font-semibold hover:bg-[#dc2626] focus:ring-red-500" disabled={loading}>
+                  {loading ? (
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      Iniciar sesion
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  )}
+                </Button>
+              </form>
+
+              <p className="mt-6 text-center text-xs text-slate-500">
+                No tienes cuenta?{' '}
+                <a href="/register" className="font-semibold text-red-500 transition hover:text-red-600">
+                  Registra tu empresa
+                </a>
+              </p>
+            </section>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
