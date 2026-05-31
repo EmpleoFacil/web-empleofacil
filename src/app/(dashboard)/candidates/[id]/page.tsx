@@ -19,12 +19,12 @@ import { formatDate, getStatusLabel, cn } from '@/lib/utils';
 type TabType = 'resumen' | 'documentos' | 'historial' | 'entrevistas' | 'evaluaciones';
 
 const statusOptions = [
-  { value: 'new', label: 'Nuevo', color: 'text-blue-600' },
-  { value: 'reviewing', label: 'En revisión', color: 'text-yellow-600' },
-  { value: 'shortlisted', label: 'Preseleccionado', color: 'text-purple-600' },
-  { value: 'interview', label: 'Entrevista', color: 'text-indigo-600' },
-  { value: 'hired', label: 'Contratado', color: 'text-green-600' },
-  { value: 'rejected', label: 'Descartado', color: 'text-red-600' },
+  { value: 'new', label: 'Nuevo', color: 'text-[#0B5CFF]' },
+  { value: 'reviewing', label: 'En revisión', color: 'text-[#F59E0B]' },
+  { value: 'shortlisted', label: 'Preseleccionado', color: 'text-[#A855F7]' },
+  { value: 'interview', label: 'Entrevista', color: 'text-[#4F46E5]' },
+  { value: 'hired', label: 'Contratado', color: 'text-[#16A34A]' },
+  { value: 'rejected', label: 'Descartado', color: 'text-[#EF4444]' },
 ];
 
 export default function CandidateDetailPage() {
@@ -93,7 +93,7 @@ export default function CandidateDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
       </div>
     );
@@ -111,13 +111,13 @@ export default function CandidateDetailPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Header title="Detalle de candidato" subtitle="Revisa el perfil completo y la postulación del candidato." />
 
       <div className="p-6">
         {/* Breadcrumb & Actions */}
         <div className="flex items-center justify-between mb-6">
-          <Link href="/candidates" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+          <Link href="/candidates" className="inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]">
             <ArrowLeft className="h-4 w-4" />
             Candidatos
           </Link>
@@ -129,12 +129,12 @@ export default function CandidateDetailPage() {
                 <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
               {showStatusMenu && (
-                <div className="absolute right-0 top-12 z-10 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
+                <div className="absolute right-0 top-12 z-10 w-48 rounded-lg border border-[#E6ECF5] bg-white shadow-lg py-1">
                   {statusOptions.map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => updateStatusMutation.mutate(opt.value)}
-                      className={cn('flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100', opt.color)}
+                      className={cn('flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[#F1F5F9]', opt.color)}
                     >
                       {opt.label}
                     </button>
@@ -157,21 +157,21 @@ export default function CandidateDetailPage() {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-start gap-6">
-              <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl font-bold text-blue-600">{candidate?.fullName?.charAt(0)}</span>
+              <div className="h-20 w-20 rounded-full bg-[#EAF2FF] flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl font-bold text-[#0B5CFF]">{candidate?.fullName?.charAt(0)}</span>
               </div>
 
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold text-gray-900">{candidate?.fullName}</h2>
+                  <h2 className="text-2xl font-bold text-[#0F172A]">{candidate?.fullName}</h2>
                   <Badge variant={getStatusBadgeVariant(application?.status)}>
                     {getStatusLabel(application?.status)}
                   </Badge>
                 </div>
-                <p className="text-gray-600 mb-1">Postuló para: <span className="font-medium">{job?.title}</span></p>
-                <p className="text-sm text-gray-500">Postulado el: {formatDate(application?.appliedAt)}</p>
+                <p className="text-[#475569] mb-1">Postuló para: <span className="font-medium">{job?.title}</span></p>
+                <p className="text-sm text-[#64748B]">Postulado el: {formatDate(application?.appliedAt)}</p>
 
-                <div className="flex items-center gap-6 mt-4 text-sm text-gray-500">
+                <div className="flex items-center gap-6 mt-4 text-sm text-[#64748B]">
                   {candidate?.city && (
                     <span className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
@@ -194,11 +194,11 @@ export default function CandidateDetailPage() {
               </div>
 
               <div className="text-right space-y-2">
-                <div className="text-sm text-gray-500">Experiencia</div>
+                <div className="text-sm text-[#64748B]">Experiencia</div>
                 <div className="font-semibold">{candidate?.yearsExperience || 0} años</div>
-                <div className="text-sm text-gray-500 mt-4">Educación</div>
+                <div className="text-sm text-[#64748B] mt-4">Educación</div>
                 <div className="font-semibold">{candidate?.educationLevel || 'N/A'}</div>
-                <div className="text-sm text-gray-500 mt-4">Salario esperado</div>
+                <div className="text-sm text-[#64748B] mt-4">Salario esperado</div>
                 <div className="font-semibold">C$ {candidate?.expectedSalary?.toLocaleString() || 'N/A'}</div>
               </div>
             </div>
@@ -206,7 +206,7 @@ export default function CandidateDetailPage() {
         </Card>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
+        <div className="border-b border-[#E6ECF5] mb-6">
           <nav className="flex gap-8">
             {tabs.map(tab => (
               <button
@@ -215,8 +215,8 @@ export default function CandidateDetailPage() {
                 className={cn(
                   'pb-4 text-sm font-medium border-b-2 transition-colors',
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue-600 text-[#0B5CFF]'
+                    : 'border-transparent text-[#64748B] hover:text-[#334155]'
                 )}
               >
                 {tab.label}
@@ -232,13 +232,13 @@ export default function CandidateDetailPage() {
               <>
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Sobre {candidate?.fullName?.split(' ')[0]}</h3>
-                    <p className="text-gray-600">{candidate?.bio || 'Sin descripción disponible.'}</p>
+                    <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Sobre {candidate?.fullName?.split(' ')[0]}</h3>
+                    <p className="text-[#475569]">{candidate?.bio || 'Sin descripción disponible.'}</p>
 
                     {candidate?.skills && candidate.skills.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {candidate.skills.map((skill: string, i: number) => (
-                          <span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+                          <span key={i} className="px-3 py-1 bg-[#EAF2FF] text-[#0B5CFF] rounded-full text-sm">
                             {skill}
                           </span>
                         ))}
@@ -250,35 +250,35 @@ export default function CandidateDetailPage() {
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Documentos</h3>
-                      <Link href="#" className="text-sm text-blue-600 hover:underline">Ver todos</Link>
+                      <h3 className="text-lg font-semibold text-[#0F172A]">Documentos</h3>
+                      <Link href="#" className="text-sm text-[#0B5CFF] hover:underline">Ver todos</Link>
                     </div>
                     <div className="space-y-3">
                       {documents?.slice(0, 3).map((doc: { id: string; type: string; status: string; uploadedAt: string }) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={doc.id} className="flex items-center justify-between p-3 bg-[#F8FAFC] rounded-lg">
                           <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-gray-400" />
+                            <FileText className="h-5 w-5 text-[#94A3B8]" />
                             <div>
-                              <p className="font-medium text-gray-900">{doc.type}</p>
-                              <p className="text-xs text-gray-500">Subido el {formatDate(doc.uploadedAt)}</p>
+                              <p className="font-medium text-[#0F172A]">{doc.type}</p>
+                              <p className="text-xs text-[#64748B]">Subido el {formatDate(doc.uploadedAt)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
                               {doc.status === 'approved' ? 'Verificado' : doc.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
                             </Badge>
-                            <button className="p-1 hover:bg-gray-200 rounded"><Eye className="h-4 w-4 text-gray-500" /></button>
-                            <button className="p-1 hover:bg-gray-200 rounded"><Download className="h-4 w-4 text-gray-500" /></button>
+                            <button className="p-1 hover:bg-[#E6ECF5] rounded"><Eye className="h-4 w-4 text-[#64748B]" /></button>
+                            <button className="p-1 hover:bg-[#E6ECF5] rounded"><Download className="h-4 w-4 text-[#64748B]" /></button>
                           </div>
                         </div>
-                      )) || <p className="text-gray-500 text-sm">Sin documentos</p>}
+                      )) || <p className="text-[#64748B] text-sm">Sin documentos</p>}
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Historial de postulación</h3>
+                    <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Historial de postulación</h3>
                     <div className="space-y-4">
                       {application?.timeline?.map((event: { status: string; date: string; user?: string; description?: string }, i: number) => (
                         <div key={i} className="flex gap-4">
@@ -290,17 +290,17 @@ export default function CandidateDetailPage() {
                             {i < (application.timeline?.length || 0) - 1 && <div className="w-0.5 flex-1 bg-gray-200" />}
                           </div>
                           <div className="pb-4">
-                            <p className="font-medium text-gray-900">{event.status}</p>
-                            <p className="text-sm text-gray-500">{event.description}</p>
-                            <p className="text-xs text-gray-400 mt-1">{formatDate(event.date)} - {event.user}</p>
+                            <p className="font-medium text-[#0F172A]">{event.status}</p>
+                            <p className="text-sm text-[#64748B]">{event.description}</p>
+                            <p className="text-xs text-[#94A3B8] mt-1">{formatDate(event.date)} - {event.user}</p>
                           </div>
                         </div>
                       )) || (
                         <div className="flex gap-4">
                           <div className="h-3 w-3 rounded-full bg-green-500" />
                           <div>
-                            <p className="font-medium text-gray-900">Postulación recibida</p>
-                            <p className="text-xs text-gray-400">{formatDate(application?.appliedAt)}</p>
+                            <p className="font-medium text-[#0F172A]">Postulación recibida</p>
+                            <p className="text-xs text-[#94A3B8]">{formatDate(application?.appliedAt)}</p>
                           </div>
                         </div>
                       )}
@@ -313,15 +313,15 @@ export default function CandidateDetailPage() {
             {activeTab === 'documentos' && (
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos del candidato</h3>
+                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Documentos del candidato</h3>
                   <div className="space-y-3">
                     {documents?.map((doc: { id: string; type: string; status: string; uploadedAt: string; fileUrl?: string }) => (
-                      <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div key={doc.id} className="flex items-center justify-between p-4 border border-[#E6ECF5] rounded-lg">
                         <div className="flex items-center gap-3">
-                          <FileText className="h-6 w-6 text-gray-400" />
+                          <FileText className="h-6 w-6 text-[#94A3B8]" />
                           <div>
-                            <p className="font-medium text-gray-900">{doc.type}</p>
-                            <p className="text-sm text-gray-500">Subido el {formatDate(doc.uploadedAt)}</p>
+                            <p className="font-medium text-[#0F172A]">{doc.type}</p>
+                            <p className="text-sm text-[#64748B]">Subido el {formatDate(doc.uploadedAt)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -333,7 +333,7 @@ export default function CandidateDetailPage() {
                           </Button>
                         </div>
                       </div>
-                    )) || <p className="text-gray-500">No hay documentos disponibles</p>}
+                    )) || <p className="text-[#64748B]">No hay documentos disponibles</p>}
                   </div>
                 </CardContent>
               </Card>
@@ -342,8 +342,8 @@ export default function CandidateDetailPage() {
             {activeTab === 'historial' && (
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historial completo</h3>
-                  <p className="text-gray-500">Historial de cambios y actividad del candidato.</p>
+                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Historial completo</h3>
+                  <p className="text-[#64748B]">Historial de cambios y actividad del candidato.</p>
                 </CardContent>
               </Card>
             )}
@@ -351,8 +351,8 @@ export default function CandidateDetailPage() {
             {activeTab === 'entrevistas' && (
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Entrevistas programadas</h3>
-                  <p className="text-gray-500">No hay entrevistas programadas para este candidato.</p>
+                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Entrevistas programadas</h3>
+                  <p className="text-[#64748B]">No hay entrevistas programadas para este candidato.</p>
                   <Button className="mt-4" onClick={() => setShowInterviewModal(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Programar entrevista
@@ -364,8 +364,8 @@ export default function CandidateDetailPage() {
             {activeTab === 'evaluaciones' && (
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Evaluaciones</h3>
-                  <p className="text-gray-500">No hay evaluaciones registradas.</p>
+                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Evaluaciones</h3>
+                  <p className="text-[#64748B]">No hay evaluaciones registradas.</p>
                 </CardContent>
               </Card>
             )}
@@ -376,8 +376,8 @@ export default function CandidateDetailPage() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Notas internas</h3>
-                  <button onClick={() => setShowNoteModal(true)} className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                  <h3 className="font-semibold text-[#0F172A]">Notas internas</h3>
+                  <button onClick={() => setShowNoteModal(true)} className="text-[#0B5CFF] text-sm hover:underline flex items-center gap-1">
                     <Plus className="h-4 w-4" />
                     Añadir nota
                   </button>
@@ -385,10 +385,10 @@ export default function CandidateDetailPage() {
                 <div className="space-y-3">
                   {application?.notes?.map((note: { id: string; content: string; createdAt: string; author?: { name?: string } }) => (
                     <div key={note.id} className="p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r">
-                      <p className="text-sm text-gray-700">{note.content}</p>
-                      <p className="text-xs text-gray-500 mt-1">{note.author?.name} - {formatDate(note.createdAt)}</p>
+                      <p className="text-sm text-[#334155]">{note.content}</p>
+                      <p className="text-xs text-[#64748B] mt-1">{note.author?.name} - {formatDate(note.createdAt)}</p>
                     </div>
-                  )) || <p className="text-sm text-gray-500">Sin notas</p>}
+                  )) || <p className="text-sm text-[#64748B]">Sin notas</p>}
                 </div>
               </CardContent>
             </Card>
@@ -396,22 +396,22 @@ export default function CandidateDetailPage() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Mensajes recientes</h3>
-                  <Link href="/messages" className="text-blue-600 text-sm hover:underline">Ver todos</Link>
+                  <h3 className="font-semibold text-[#0F172A]">Mensajes recientes</h3>
+                  <Link href="/messages" className="text-[#0B5CFF] text-sm hover:underline">Ver todos</Link>
                 </div>
                 <div className="space-y-3">
                   {messages?.slice(0, 3).map((msg: { id: string; title: string; body: string; sentAt: string; status: string }) => (
-                    <div key={msg.id} className="p-3 bg-gray-50 rounded-lg">
+                    <div key={msg.id} className="p-3 bg-[#F8FAFC] rounded-lg">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-sm text-gray-900">{msg.title}</p>
-                        <Badge variant={msg.status === 'responded' ? 'success' : 'secondary'} className="text-xs">
+                        <p className="font-medium text-sm text-[#0F172A]">{msg.title}</p>
+                        <Badge variant={msg.status === 'responded' ? 'success' : 'default'} className="text-xs">
                           {msg.status === 'responded' ? 'Respondido' : 'Enviado'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-gray-500 line-clamp-2">{msg.body}</p>
-                      <p className="text-xs text-gray-400 mt-1">{formatDate(msg.sentAt)}</p>
+                      <p className="text-xs text-[#64748B] line-clamp-2">{msg.body}</p>
+                      <p className="text-xs text-[#94A3B8] mt-1">{formatDate(msg.sentAt)}</p>
                     </div>
-                  )) || <p className="text-sm text-gray-500">Sin mensajes</p>}
+                  )) || <p className="text-sm text-[#64748B]">Sin mensajes</p>}
                 </div>
               </CardContent>
             </Card>
@@ -457,11 +457,11 @@ export default function CandidateDetailPage() {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50">
+      <div className="w-full max-w-lg rounded-[18px] bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#E6ECF5] px-6 py-4">
+          <h2 className="text-lg font-semibold text-[#0F172A]">{title}</h2>
+          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#475569]">&times;</button>
         </div>
         <div className="p-6">{children}</div>
       </div>
@@ -475,30 +475,30 @@ function InterviewForm({ applicationId, onSubmit, isLoading }: { applicationId: 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora</label>
-        <input type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" required />
+        <label className="block text-sm font-medium text-[#334155] mb-1">Fecha y hora</label>
+        <input type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Modalidad</label>
-        <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3">
+        <label className="block text-sm font-medium text-[#334155] mb-1">Modalidad</label>
+        <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
           <option value="presencial">Presencial</option>
           <option value="virtual">Virtual</option>
         </select>
       </div>
       {form.type === 'presencial' ? (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-          <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" placeholder="Dirección de la entrevista" />
+          <label className="block text-sm font-medium text-[#334155] mb-1">Ubicación</label>
+          <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" placeholder="Dirección de la entrevista" />
         </div>
       ) : (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Enlace de videollamada</label>
-          <input type="url" value={form.meetingUrl} onChange={e => setForm({ ...form, meetingUrl: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" placeholder="https://meet.google.com/..." />
+          <label className="block text-sm font-medium text-[#334155] mb-1">Enlace de videollamada</label>
+          <input type="url" value={form.meetingUrl} onChange={e => setForm({ ...form, meetingUrl: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" placeholder="https://meet.google.com/..." />
         </div>
       )}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Notas para el candidato</label>
-        <textarea value={form.notesForCandidate} onChange={e => setForm({ ...form, notesForCandidate: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2" rows={3} placeholder="Instrucciones adicionales..." />
+        <label className="block text-sm font-medium text-[#334155] mb-1">Notas para el candidato</label>
+        <textarea value={form.notesForCandidate} onChange={e => setForm({ ...form, notesForCandidate: e.target.value })} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={3} placeholder="Instrucciones adicionales..." />
       </div>
       <div className="flex justify-end gap-3 pt-4">
         <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : 'Programar'}</Button>
@@ -513,12 +513,12 @@ function MessageForm({ candidateId, applicationId, onSubmit, isLoading }: { cand
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Asunto</label>
-        <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" required />
+        <label className="block text-sm font-medium text-[#334155] mb-1">Asunto</label>
+        <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
-        <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2" rows={5} required />
+        <label className="block text-sm font-medium text-[#334155] mb-1">Mensaje</label>
+        <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={5} required />
       </div>
       <div className="flex justify-end gap-3 pt-4">
         <Button type="submit" disabled={isLoading}>{isLoading ? 'Enviando...' : 'Enviar mensaje'}</Button>
@@ -533,8 +533,8 @@ function NoteForm({ onSubmit, isLoading }: { onSubmit: (content: string) => void
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(content); }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nota</label>
-        <textarea value={content} onChange={e => setContent(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" rows={4} placeholder="Escribe una nota interna..." required />
+        <label className="block text-sm font-medium text-[#334155] mb-1">Nota</label>
+        <textarea value={content} onChange={e => setContent(e.target.value)} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={4} placeholder="Escribe una nota interna..." required />
       </div>
       <div className="flex justify-end gap-3 pt-4">
         <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : 'Guardar nota'}</Button>

@@ -1,14 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --primary: #0B5CFF;
+  --primary-hover: #004BDD;
+  --primary-soft: #EAF2FF;
+  --surface: #FFFFFF;
+  --border: #E6ECF5;
+  --border-soft: #F1F5F9;
+  --text-strong: #0F172A;
+  --text-default: #334155;
+  --text-muted: #64748B;
+  --success: #16A34A;
+  --success-soft: #EAF8EF;
+  --warning: #F59E0B;
+  --warning-soft: #FFF5E6;
+  --error: #EF4444;
+  --error-soft: #FEECEC;
+  --purple: #A855F7;
+  --purple-soft: #F5EAFE;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
@@ -16,4 +34,24 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #E2E8F0 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #E2E8F0;
+  border-radius: 3px;
 }

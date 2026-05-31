@@ -34,12 +34,12 @@ interface CompanyApplicationOption {
 }
 
 const statusColors: Record<string, string> = {
-  scheduled: 'bg-yellow-100 text-yellow-700',
-  confirmed: 'bg-green-100 text-green-700',
-  rescheduled: 'bg-orange-100 text-orange-700',
-  completed: 'bg-blue-100 text-blue-700',
-  cancelled: 'bg-red-100 text-red-700',
-  pending_confirmation: 'bg-purple-100 text-purple-700',
+  scheduled: 'bg-[#FFF5E6] text-[#F59E0B]',
+  confirmed: 'bg-[#EAF8EF] text-green-700',
+  rescheduled: 'bg-[#FFEDD5] text-[#EA580C]',
+  completed: 'bg-[#EAF2FF] text-[#0B5CFF]',
+  cancelled: 'bg-[#FEECEC] text-red-700',
+  pending_confirmation: 'bg-[#F5EAFE] text-[#A855F7]',
 };
 
 const statusLabels: Record<string, string> = {
@@ -146,7 +146,7 @@ export default function InterviewsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Header title="Entrevistas" subtitle="Gestiona y da seguimiento a todas las entrevistas programadas para tus vacantes." />
 
       <div className="p-6 space-y-6">
@@ -158,36 +158,26 @@ export default function InterviewsPage() {
             trend={summary?.total?.trend}
             period="mes anterior"
             icon={Calendar}
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
           />
           <StatCard
             title="Pendientes de confirmación"
             value={summary?.pending?.value ?? 0}
             icon={Clock}
-            iconBg="bg-yellow-100"
-            iconColor="text-yellow-600"
           />
           <StatCard
             title="Confirmadas"
             value={summary?.confirmed?.value ?? 0}
             icon={CheckCircle}
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
           />
           <StatCard
             title="Reprogramadas"
             value={summary?.rescheduled?.value ?? 0}
             icon={RefreshCw}
-            iconBg="bg-orange-100"
-            iconColor="text-orange-600"
           />
           <StatCard
             title="Finalizadas"
             value={summary?.completed?.value ?? 0}
             icon={FileText}
-            iconBg="bg-purple-100"
-            iconColor="text-purple-600"
           />
         </div>
 
@@ -196,19 +186,19 @@ export default function InterviewsPage() {
           <CardHeader>
             <div className="flex items-center gap-4 flex-1">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
                 <input
                   type="text"
                   placeholder="Buscar por candidato o vacante..."
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none"
+                  className="h-10 w-full rounded-lg border border-[#D1D9E6] pl-10 pr-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                 />
               </div>
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="h-10 rounded-lg border border-gray-300 px-3 text-sm"
+                className="h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
               >
                 <option value="">Todos los estados</option>
                 {Object.entries(statusLabels).map(([value, label]) => (
@@ -218,7 +208,7 @@ export default function InterviewsPage() {
               <select
                 value={filters.jobId}
                 onChange={(e) => setFilters({ ...filters, jobId: e.target.value })}
-                className="h-10 rounded-lg border border-gray-300 px-3 text-sm"
+                className="h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
               >
                 <option value="">Todas las vacantes</option>
                 {jobs?.map((job: { id: string; title: string }) => (
@@ -237,24 +227,24 @@ export default function InterviewsPage() {
           </CardHeader>
 
           {showFilters && (
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+            <div className="px-6 py-4 border-t border-[#EEF2F7] bg-[#F8FAFC]">
               <div className="flex items-center gap-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Desde</label>
+                  <label className="block text-xs text-[#64748B] mb-1">Desde</label>
                   <input
                     type="date"
                     value={filters.dateFrom}
                     onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                    className="h-10 rounded-lg border border-gray-300 px-3 text-sm"
+                    className="h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Hasta</label>
+                  <label className="block text-xs text-[#64748B] mb-1">Hasta</label>
                   <input
                     type="date"
                     value={filters.dateTo}
                     onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                    className="h-10 rounded-lg border border-gray-300 px-3 text-sm"
+                    className="h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
                   />
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setFilters({ status: '', jobId: '', search: '', dateFrom: '', dateTo: '' })}>
@@ -271,46 +261,46 @@ export default function InterviewsPage() {
               </div>
             ) : interviews?.length ? (
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#F8FAFC] border-b border-[#E6ECF5]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Candidato</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Vacante</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Fecha</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Hora</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Modalidad</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Ubicación / Enlace</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Estado</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Acciones</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Candidato</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Vacante</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Fecha</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Hora</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Modalidad</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Ubicación / Enlace</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Estado</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-[#475569]">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[#EEF2F7]">
                   {interviews.map((interview: Interview) => {
                     const date = new Date(interview.date);
                     return (
-                      <tr key={interview.id} className="hover:bg-gray-50">
+                      <tr key={interview.id} className="hover:bg-[#F8FAFC]">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <span className="text-sm font-medium text-blue-600">{(interview.candidate?.fullName || '?').charAt(0)}</span>
+                            <div className="h-10 w-10 rounded-full bg-[#EAF2FF] flex items-center justify-center">
+                              <span className="text-sm font-medium text-[#0B5CFF]">{(interview.candidate?.fullName || '?').charAt(0)}</span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{interview.candidate?.fullName || 'Candidato'}</p>
-                              <p className="text-sm text-gray-500">{interview.candidate?.city}</p>
+                              <p className="font-medium text-[#0F172A]">{interview.candidate?.fullName || 'Candidato'}</p>
+                              <p className="text-sm text-[#64748B]">{interview.candidate?.city}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{interview.job?.title || interview.application?.job?.title || 'Vacante'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-6 py-4 text-sm text-[#0F172A]">{interview.job?.title || interview.application?.job?.title || 'Vacante'}</td>
+                        <td className="px-6 py-4 text-sm text-[#0F172A]">
                           {date.toLocaleDateString('es-NI', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          <span className="block text-xs text-gray-500">{date.toLocaleDateString('es-NI', { weekday: 'long' })}</span>
+                          <span className="block text-xs text-[#64748B]">{date.toLocaleDateString('es-NI', { weekday: 'long' })}</span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-6 py-4 text-sm text-[#0F172A]">
                           {date.toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td className="px-6 py-4">
                           <span className={cn(
                             'inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium',
-                            interview.modality === 'virtual' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                            interview.modality === 'virtual' ? 'bg-[#F5EAFE] text-[#A855F7]' : 'bg-[#EAF2FF] text-[#0B5CFF]'
                           )}>
                             {interview.modality === 'virtual' ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
                             {interview.modality === 'virtual' ? 'Virtual' : 'Presencial'}
@@ -318,42 +308,42 @@ export default function InterviewsPage() {
                         </td>
                         <td className="px-6 py-4 text-sm">
                           {interview.modality === 'virtual' && interview.meetingUrl ? (
-                            <a href={interview.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block max-w-[200px]">
+                            <a href={interview.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-[#0B5CFF] hover:underline truncate block max-w-[200px]">
                               {interview.meetingUrl}
                             </a>
                           ) : (
-                            <span className="text-gray-900">{interview.location || 'Por definir'}</span>
+                            <span className="text-[#0F172A]">{interview.location || 'Por definir'}</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <span className={cn('px-2 py-1 rounded-full text-xs font-medium', statusColors[interview.status] || 'bg-gray-100 text-gray-700')}>
+                          <span className={cn('px-2 py-1 rounded-full text-xs font-medium', statusColors[interview.status] || 'bg-[#F1F5F9] text-[#334155]')}>
                             {statusLabels[interview.status] || interview.status}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setEditingInterview(interview)} className="p-2 rounded-lg hover:bg-gray-100" title="Editar">
-                              <Edit className="h-4 w-4 text-gray-500" />
+                            <button onClick={() => setEditingInterview(interview)} className="p-2 rounded-lg hover:bg-[#F1F5F9]" title="Editar">
+                              <Edit className="h-4 w-4 text-[#64748B]" />
                             </button>
-                            <button onClick={() => sendReminderMutation.mutate(interview.id)} className="p-2 rounded-lg hover:bg-gray-100" title="Recordatorio">
-                              <Bell className="h-4 w-4 text-gray-500" />
+                            <button onClick={() => sendReminderMutation.mutate(interview.id)} className="p-2 rounded-lg hover:bg-[#F1F5F9]" title="Recordatorio">
+                              <Bell className="h-4 w-4 text-[#64748B]" />
                             </button>
-                            <button onClick={() => setShowResultModal(interview)} className="p-2 rounded-lg hover:bg-gray-100" title="Resultado">
-                              <FileText className="h-4 w-4 text-gray-500" />
+                            <button onClick={() => setShowResultModal(interview)} className="p-2 rounded-lg hover:bg-[#F1F5F9]" title="Resultado">
+                              <FileText className="h-4 w-4 text-[#64748B]" />
                             </button>
                             <div className="relative">
-                              <button onClick={() => setActiveMenu(activeMenu === interview.id ? null : interview.id)} className="p-2 rounded-lg hover:bg-gray-100">
-                                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                              <button onClick={() => setActiveMenu(activeMenu === interview.id ? null : interview.id)} className="p-2 rounded-lg hover:bg-[#F1F5F9]">
+                                <MoreHorizontal className="h-4 w-4 text-[#64748B]" />
                               </button>
                               {activeMenu === interview.id && (
-                                <div className="absolute right-0 top-10 z-10 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
-                                  <button onClick={() => updateStatusMutation.mutate({ id: interview.id, status: 'confirmed' })} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-gray-100">
+                                <div className="absolute right-0 top-10 z-10 w-48 rounded-lg border border-[#E6ECF5] bg-white shadow-lg py-1">
+                                  <button onClick={() => updateStatusMutation.mutate({ id: interview.id, status: 'confirmed' })} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#16A34A] hover:bg-[#F1F5F9]">
                                     <CheckCircle className="h-4 w-4" /> Confirmar
                                   </button>
-                                  <button onClick={() => updateStatusMutation.mutate({ id: interview.id, status: 'rescheduled' })} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-gray-100">
+                                  <button onClick={() => updateStatusMutation.mutate({ id: interview.id, status: 'rescheduled' })} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#EA580C] hover:bg-[#F1F5F9]">
                                     <RefreshCw className="h-4 w-4" /> Reagendar
                                   </button>
-                                  <button onClick={() => updateStatusMutation.mutate({ id: interview.id, status: 'cancelled' })} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                  <button onClick={() => updateStatusMutation.mutate({ id: interview.id, status: 'cancelled' })} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#EF4444] hover:bg-[#F1F5F9]">
                                     <X className="h-4 w-4" /> Cancelar
                                   </button>
                                 </div>
@@ -368,9 +358,9 @@ export default function InterviewsPage() {
               </table>
             ) : (
               <div className="py-12 text-center">
-                <Calendar className="mx-auto h-12 w-12 text-gray-300" />
-                <p className="mt-4 text-lg font-medium text-gray-900">No hay entrevistas</p>
-                <p className="mt-1 text-sm text-gray-500">Programa tu primera entrevista para comenzar</p>
+                <Calendar className="mx-auto h-12 w-12 text-[#CBD5E1]" />
+                <p className="mt-4 text-lg font-medium text-[#0F172A]">No hay entrevistas</p>
+                <p className="mt-1 text-sm text-[#64748B]">Programa tu primera entrevista para comenzar</p>
                 <Button className="mt-4" onClick={() => { setCreateError(''); setShowNewModal(true); }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Programar entrevista
@@ -436,26 +426,26 @@ function InterviewModal({ title, interview, applications, errorMessage, onClose,
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        <div className="flex items-center justify-between border-b border-[#E6ECF5] px-6 py-4">
+          <h2 className="text-lg font-semibold text-[#0F172A]">{title}</h2>
+          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#475569] text-2xl">&times;</button>
         </div>
         <div className="p-6">
           <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
             {!interview && errorMessage && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div className="rounded-lg border border-[#F5C6C6] bg-red-50 px-3 py-2 text-sm text-red-700">
                 {errorMessage}
               </div>
             )}
             {!interview && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Postulacion</label>
+                <label className="block text-sm font-medium text-[#334155] mb-1">Postulacion</label>
                 <select
                   value={form.applicationId}
                   onChange={e => setForm({ ...form, applicationId: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-gray-300 px-3"
+                  className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3"
                   required
                 >
                   <option value="">Selecciona una postulacion</option>
@@ -468,30 +458,30 @@ function InterviewModal({ title, interview, applications, errorMessage, onClose,
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora</label>
-              <input type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" required />
+              <label className="block text-sm font-medium text-[#334155] mb-1">Fecha y hora</label>
+              <input type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modalidad</label>
-              <select value={form.modality} onChange={e => setForm({ ...form, modality: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3">
+              <label className="block text-sm font-medium text-[#334155] mb-1">Modalidad</label>
+              <select value={form.modality} onChange={e => setForm({ ...form, modality: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
                 <option value="presencial">Presencial</option>
                 <option value="virtual">Virtual</option>
               </select>
             </div>
             {form.modality === 'presencial' ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-                <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" placeholder="Dirección" />
+                <label className="block text-sm font-medium text-[#334155] mb-1">Ubicación</label>
+                <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" placeholder="Dirección" />
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Enlace de videollamada</label>
-                <input type="url" value={form.meetingUrl} onChange={e => setForm({ ...form, meetingUrl: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3" placeholder="https://..." />
+                <label className="block text-sm font-medium text-[#334155] mb-1">Enlace de videollamada</label>
+                <input type="url" value={form.meetingUrl} onChange={e => setForm({ ...form, meetingUrl: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" placeholder="https://..." />
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas para el candidato</label>
-              <textarea value={form.notesForCandidate} onChange={e => setForm({ ...form, notesForCandidate: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2" rows={3} />
+              <label className="block text-sm font-medium text-[#334155] mb-1">Notas para el candidato</label>
+              <textarea value={form.notesForCandidate} onChange={e => setForm({ ...form, notesForCandidate: e.target.value })} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={3} />
             </div>
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
@@ -513,32 +503,32 @@ function ResultModal({ interview, onClose, onSubmit, isLoading }: {
   const [form, setForm] = useState({ result: 'passed', notes: '', moveApplicationStatus: '' });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">Registrar resultado</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        <div className="flex items-center justify-between border-b border-[#E6ECF5] px-6 py-4">
+          <h2 className="text-lg font-semibold text-[#0F172A]">Registrar resultado</h2>
+          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#475569] text-2xl">&times;</button>
         </div>
         <div className="p-6">
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-[#475569] mb-4">
             Entrevista con <strong>{interview.candidate?.fullName || 'Candidato'}</strong> para <strong>{interview.job?.title || interview.application?.job?.title || 'Vacante'}</strong>
           </p>
           <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Resultado</label>
-              <select value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3">
+              <label className="block text-sm font-medium text-[#334155] mb-1">Resultado</label>
+              <select value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
                 <option value="passed">Aprobado</option>
                 <option value="failed">No aprobado</option>
                 <option value="pending">Pendiente de decisión</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas internas</label>
-              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2" rows={4} placeholder="Observaciones de la entrevista..." />
+              <label className="block text-sm font-medium text-[#334155] mb-1">Notas internas</label>
+              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={4} placeholder="Observaciones de la entrevista..." />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mover estado de postulación a</label>
-              <select value={form.moveApplicationStatus} onChange={e => setForm({ ...form, moveApplicationStatus: e.target.value })} className="w-full h-10 rounded-lg border border-gray-300 px-3">
+              <label className="block text-sm font-medium text-[#334155] mb-1">Mover estado de postulación a</label>
+              <select value={form.moveApplicationStatus} onChange={e => setForm({ ...form, moveApplicationStatus: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
                 <option value="">No cambiar</option>
                 <option value="shortlisted">Preseleccionado</option>
                 <option value="hired">Contratado</option>

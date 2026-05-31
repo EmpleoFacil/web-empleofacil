@@ -21,8 +21,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0B5CFF] border-t-transparent" />
       </div>
     );
   }
@@ -32,9 +32,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Sidebar />
-      <main className="ml-64 min-h-screen transition-all duration-300">
+      <main className="ml-[272px] min-h-screen transition-all duration-300">
         {children}
       </main>
     </div>

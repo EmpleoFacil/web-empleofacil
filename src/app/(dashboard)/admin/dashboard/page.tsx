@@ -2,12 +2,20 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Building2, Users, Briefcase, FileText, Activity, Clock } from 'lucide-react';
+import Link from 'next/link';
 import { Header } from '@/components/ui/header';
-import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { dashboard } from '@/lib/api';
 import { formatDateTime, getStatusLabel } from '@/lib/utils';
+
+const kpiConfig = [
+  { key: 'companies', title: 'Empresas', icon: Building2, bg: 'bg-[#EAF2FF]', color: 'text-[#0B5CFF]', href: '/admin/companies' },
+  { key: 'candidates', title: 'Candidatos', icon: Users, bg: 'bg-[#EAF8EF]', color: 'text-[#16A34A]', href: '/admin/candidates' },
+  { key: 'activeJobs', title: 'Vacantes Activas', icon: Briefcase, bg: 'bg-[#F5EAFE]', color: 'text-[#A855F7]', href: '/admin/jobs' },
+  { key: 'applications', title: 'Aplicaciones', icon: FileText, bg: 'bg-[#FFF5E6]', color: 'text-[#F59E0B]' },
+  { key: 'documentsPending', title: 'Documentos Pendientes', icon: Clock, bg: 'bg-[#FEECEC]', color: 'text-[#EF4444]', href: '/admin/candidates' },
+];
 
 export default function AdminDashboardPage() {
   const { data, isLoading } = useQuery({
@@ -17,8 +25,8 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0B5CFF] border-t-transparent" />
       </div>
     );
   }
@@ -26,76 +34,72 @@ export default function AdminDashboardPage() {
   const { kpis, recentActivity, platformStatus } = data || {};
 
   return (
-    <div className="min-h-screen">
-      <Header 
-        title="Panel de Administración" 
-        subtitle="Vista general de la plataforma" 
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <Header
+        title="Panel de Administracion"
+        subtitle="Vista general de la plataforma"
       />
 
-      <div className="p-6 space-y-6">
-        {/* Platform Status */}
-        <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 text-white">
-          <div className="flex items-center gap-3">
-            <div className="h-3 w-3 rounded-full bg-white animate-pulse" />
-            <span className="font-medium">Estado de la plataforma:</span>
-            <span className="font-bold capitalize">{platformStatus || 'Operacional'}</span>
+      <div className="space-y-6 p-8">
+        <div className="flex items-center justify-between rounded-[20px] bg-gradient-to-r from-[#16A34A] to-[#15803D] px-6 py-5 text-white shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex h-3 w-3 items-center justify-center">
+              <div className="h-3 w-3 animate-pulse rounded-full bg-white" />
+            </div>
+            <span className="text-sm font-semibold">Estado de la plataforma:</span>
+            <span className="text-sm font-bold capitalize">{platformStatus || 'Operacional'}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <Activity className="h-5 w-5" />
-            <span className="text-sm">Todos los sistemas funcionando</span>
+            <span className="text-sm font-medium">Todos los sistemas funcionando</span>
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <StatCard
-            title="Empresas"
-            value={kpis?.companies?.value ?? 0}
-            trend={kpis?.companies?.trend}
-            period="mes anterior"
-            icon={Building2}
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
-          />
-          <StatCard
-            title="Candidatos"
-            value={kpis?.candidates?.value ?? 0}
-            trend={kpis?.candidates?.trend}
-            period="mes anterior"
-            icon={Users}
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
-          />
-          <StatCard
-            title="Vacantes Activas"
-            value={kpis?.activeJobs?.value ?? 0}
-            icon={Briefcase}
-            iconBg="bg-purple-100"
-            iconColor="text-purple-600"
-          />
-          <StatCard
-            title="Aplicaciones"
-            value={kpis?.applications?.value ?? 0}
-            icon={FileText}
-            iconBg="bg-orange-100"
-            iconColor="text-orange-600"
-          />
-          <StatCard
-            title="Documentos Pendientes"
-            value={kpis?.documentsPending?.value ?? 0}
-            icon={Clock}
-            iconBg="bg-red-100"
-            iconColor="text-red-600"
-          />
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {kpiConfig.map((kpi) => {
+            const Icon = kpi.icon;
+            const kpiData = kpis?.[kpi.key] || { value: 0 };
+            const trend = kpiData.trend;
+            const isPositive = trend !== undefined && trend >= 0;
+
+            const card = (
+              <div className="rounded-[20px] border border-[#EAEFF7] bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-colors hover:border-[#DCEBFF]">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-[#64748B]">{kpi.title}</p>
+                    <p className="mt-2 text-[40px] font-bold leading-[44px] text-[#0F172A]">{kpiData.value}</p>
+                    {trend !== undefined && (
+                      <div className="mt-2 flex items-center gap-1">
+                        <span className={isPositive ? 'text-[#16A34A]' : 'text-[#EF4444]'}>
+                          {isPositive ? '+' : ''}{trend}%
+                        </span>
+                        <span className="text-xs text-[#94A3B8]">mes anterior</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${kpi.bg}`}>
+                    <Icon className={`h-5 w-5 ${kpi.color}`} />
+                  </div>
+                </div>
+              </div>
+            );
+
+            return kpi.href ? (
+              <Link key={kpi.key} href={kpi.href} className="block">
+                {card}
+              </Link>
+            ) : (
+              <div key={kpi.key}>{card}</div>
+            );
+          })}
         </div>
 
-        {/* Recent Activity */}
         <Card>
           <CardHeader>
             <CardTitle>Actividad Reciente</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-[#EEF2F7]">
               {recentActivity?.length ? (
                 recentActivity.map((activity: {
                   id: string;
@@ -104,65 +108,63 @@ export default function AdminDashboardPage() {
                   candidate: { fullName: string };
                   job: { title: string; company: { name: string } };
                 }) => (
-                  <div key={activity.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50">
+                  <div key={activity.id} className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-[#F8FAFC]">
                     <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-sm font-medium text-blue-600">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EAF2FF]">
+                        <span className="text-sm font-bold text-[#0B5CFF]">
                           {activity.candidate.fullName.charAt(0)}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="text-sm font-semibold text-[#0F172A]">
                           {activity.candidate.fullName}
-                          <span className="font-normal text-gray-500"> aplicó a </span>
+                          <span className="font-normal text-[#64748B]"> aplico a </span>
                           {activity.job.title}
                         </p>
-                        <p className="text-sm text-gray-500">{activity.job.company.name}</p>
+                        <p className="text-xs font-medium text-[#94A3B8]">{activity.job.company.name}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <Badge variant={getStatusBadgeVariant(activity.status)}>
                         {getStatusLabel(activity.status)}
                       </Badge>
-                      <p className="text-sm text-gray-400">{formatDateTime(activity.appliedAt)}</p>
+                      <p className="text-xs font-medium text-[#94A3B8]">{formatDateTime(activity.appliedAt)}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="px-6 py-12 text-center">
-                  <Activity className="mx-auto h-12 w-12 text-gray-300" />
-                  <p className="mt-2 text-sm text-gray-500">No hay actividad reciente</p>
+                <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+                  <Activity className="h-12 w-12 text-[#CBD5E1]" />
+                  <p className="text-sm font-semibold text-[#64748B]">No hay actividad reciente</p>
+                  <p className="text-xs text-[#94A3B8]">La actividad de candidatos aparecera aqui.</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Empresas por Plan</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {[
-                  { name: 'Profesional', count: 45, color: 'bg-blue-500' },
-                  { name: 'Empresarial', count: 28, color: 'bg-purple-500' },
-                  { name: 'Básico', count: 67, color: 'bg-gray-400' },
+                  { name: 'Profesional', count: 45, color: 'bg-[#0B5CFF]' },
+                  { name: 'Empresarial', count: 28, color: 'bg-[#A855F7]' },
+                  { name: 'Basico', count: 67, color: 'bg-[#94A3B8]' },
                 ].map((plan) => (
-                  <div key={plan.name} className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700">{plan.name}</span>
-                        <span className="text-sm text-gray-500">{plan.count} empresas</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-gray-100">
-                        <div
-                          className={`h-2 rounded-full ${plan.color}`}
-                          style={{ width: `${(plan.count / 140) * 100}%` }}
-                        />
-                      </div>
+                  <div key={plan.name}>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-[#334155]">{plan.name}</span>
+                      <span className="text-xs font-medium text-[#64748B]">{plan.count} empresas</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-[#F1F5F9]">
+                      <div
+                        className={`h-2.5 rounded-full ${plan.color}`}
+                        style={{ width: `${(plan.count / 140) * 100}%` }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -172,25 +174,25 @@ export default function AdminDashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Métricas de Contratación</CardTitle>
+              <CardTitle>Metricas de Contratacion</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-8">
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900">72%</p>
-                  <p className="text-sm text-gray-500">Tasa de respuesta</p>
+                  <p className="text-[32px] font-bold leading-none text-[#0F172A]">72%</p>
+                  <p className="mt-2 text-xs font-medium text-[#64748B]">Tasa de respuesta</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900">15 días</p>
-                  <p className="text-sm text-gray-500">Tiempo promedio contratación</p>
+                  <p className="text-[32px] font-bold leading-none text-[#0F172A]">15 dias</p>
+                  <p className="mt-2 text-xs font-medium text-[#64748B]">Tiempo promedio contratacion</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900">85%</p>
-                  <p className="text-sm text-gray-500">Satisfacción empresas</p>
+                  <p className="text-[32px] font-bold leading-none text-[#0F172A]">85%</p>
+                  <p className="mt-2 text-xs font-medium text-[#64748B]">Satisfaccion empresas</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900">4.2★</p>
-                  <p className="text-sm text-gray-500">Rating candidatos</p>
+                  <p className="text-[32px] font-bold leading-none text-[#0F172A]">4.2&#9733;</p>
+                  <p className="mt-2 text-xs font-medium text-[#64748B]">Rating candidatos</p>
                 </div>
               </div>
             </CardContent>

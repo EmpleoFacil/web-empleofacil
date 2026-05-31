@@ -1,16 +1,18 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, Info, Briefcase, Users, Eye } from 'lucide-react';
 import Link from 'next/link';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Briefcase, Eye, Save, Send, Users } from 'lucide-react';
 import { Header } from '@/components/ui/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { api, jobs } from '@/lib/api';
+import { companies, jobs } from '@/lib/api';
 
-interface JobFormData {
+type JobCategory = { id: string; name: string };
+
+type JobFormData = {
   title: string;
   categoryId: string;
   city: string;
@@ -21,8 +23,22 @@ interface JobFormData {
   description: string;
   requirements: string[];
   benefits: string[];
-  status: string;
-}
+};
+
+type PlanMetric = {
+  current?: number;
+  max?: number;
+  remaining?: number;
+};
+
+type PlanLimits = {
+  plan?: { name?: string };
+  limits?: {
+    activeJobs?: PlanMetric;
+    users?: PlanMetric;
+    visibleCandidates?: PlanMetric;
+  };
+};
 
 const initialFormData: JobFormData = {
   title: '',
@@ -35,22 +51,47 @@ const initialFormData: JobFormData = {
   description: '',
   requirements: ['', '', '', ''],
   benefits: ['', '', '', ''],
-  status: 'draft',
 };
+
+function PlanProgress({ label, metric, icon }: { label: string; metric?: PlanMetric; icon: React.ReactNode }) {
+  const current = metric?.current ?? 0;
+  const max = metric?.max ?? 0;
+  const remaining = metric?.remaining ?? Math.max(0, max - current);
+  const pct = max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0;
+
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-sm font-medium text-[#334155]">{label}</span>
+        </div>
+        <span className="text-sm font-semibold text-[#0F172A]">
+          {current} / {max}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-[#F1F5F9]">
+        <div className="h-2 rounded-full bg-[#0B5CFF]" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-1 text-xs text-[#64748B]">restantes {remaining}</p>
+    </div>
+  );
+}
 
 export default function NewJobPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const { data: categories } = useQuery({
     queryKey: ['job-categories'],
-    queryFn: () => jobs.getCategories().then(res => res.data),
+    queryFn: () => jobs.getCategories().then((res) => res.data as JobCategory[]),
   });
 
   const { data: planLimits } = useQuery({
     queryKey: ['plan-limits'],
-    queryFn: () => api.get('/companies/me/plan-limits').then(res => res.data),
+    queryFn: () => companies.getPlanLimits().then((res) => res.data as PlanLimits),
   });
 
   const createMutation = useMutation({
@@ -59,53 +100,62 @@ export default function NewJobPage() {
       if (variables.status === 'active') {
         setShowSuccess(true);
       } else {
-        router.push('/jobs');
+        setDraftSaved(true);
       }
     },
   });
 
   const handleChange = (field: keyof JobFormData, value: string | string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleArrayChange = (field: 'requirements' | 'benefits', index: number, value: string) => {
-    setFormData(prev => {
-      const arr = [...prev[field]];
-      arr[index] = value;
-      return { ...prev, [field]: arr };
+    setFormData((prev) => {
+      const next = [...prev[field]];
+      next[index] = value;
+      return { ...prev, [field]: next };
     });
   };
 
   const handleSubmit = (publish: boolean) => {
-    const data = {
+    setDraftSaved(false);
+
+    const payload = {
       ...formData,
-      salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
-      salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
-      requirements: formData.requirements.filter(r => r.trim()),
-      benefits: formData.benefits.filter(b => b.trim()),
+      salaryMin: formData.salaryMin ? parseInt(formData.salaryMin, 10) : undefined,
+      salaryMax: formData.salaryMax ? parseInt(formData.salaryMax, 10) : undefined,
+      requirements: formData.requirements.filter((item) => item.trim()),
+      benefits: formData.benefits.filter((item) => item.trim()),
       status: publish ? 'active' : 'draft',
     };
-    createMutation.mutate(data);
+
+    createMutation.mutate(payload);
   };
 
-  const canPublish = planLimits?.limits?.activeJobs?.remaining > 0;
-  const filledRequirements = formData.requirements.filter(r => r.trim()).length;
-  const filledBenefits = formData.benefits.filter(b => b.trim()).length;
+  const filledRequirements = formData.requirements.filter((item) => item.trim()).length;
+  const filledBenefits = formData.benefits.filter((item) => item.trim()).length;
+  const canPublish = (planLimits?.limits?.activeJobs?.remaining ?? 0) > 0;
 
   if (showSuccess) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50 p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <Send className="h-8 w-8 text-green-600" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF8EF]">
+            <Send className="h-8 w-8 text-[#16A34A]" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">¡Vacante publicada!</h2>
-          <p className="mt-2 text-gray-600">Tu vacante ya está visible para los candidatos.</p>
+          <h2 className="text-2xl font-bold text-[#0F172A]">Vacante publicada</h2>
+          <p className="mt-2 text-[#475569]">La vacante ya esta visible para candidatos.</p>
           <div className="mt-6 flex gap-3">
             <Button variant="outline" className="flex-1" onClick={() => router.push('/jobs')}>
               Ver vacantes
             </Button>
-            <Button className="flex-1" onClick={() => { setShowSuccess(false); setFormData(initialFormData); }}>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                setShowSuccess(false);
+                setFormData(initialFormData);
+              }}
+            >
               Crear otra
             </Button>
           </div>
@@ -115,90 +165,92 @@ export default function NewJobPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header title="Crear / editar vacante" subtitle="Completa la información para publicar tu oportunidad laboral." />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <Header
+        title="Crear / editar vacante"
+        subtitle="Completa la informacion para publicar tu oportunidad laboral."
+      />
 
       <div className="p-6">
-        <div className="mb-6">
-          <Link href="/jobs" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-            <ArrowLeft className="h-4 w-4" />
+        <div className="mb-6 text-sm font-semibold text-[#64748B]">
+          <Link href="/jobs" className="text-[#0B5CFF] hover:text-[#004BDD]">
             Vacantes
           </Link>
+          <span className="mx-2">›</span>
+          <span>Nueva vacante</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Información general */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Información general</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <h3 className="mb-6 text-lg font-semibold text-[#0F172A]">Informacion general</h3>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Título del puesto <span className="text-red-500">*</span>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                      Titulo del puesto <span className="text-[#EF4444]">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.title}
                       onChange={(e) => handleChange('title', e.target.value)}
-                      placeholder="Ej: Auxiliar de Limpieza"
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Categoría <span className="text-red-500">*</span>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                      Categoria <span className="text-[#EF4444]">*</span>
                     </label>
                     <select
                       value={formData.categoryId}
                       onChange={(e) => handleChange('categoryId', e.target.value)}
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     >
-                      <option value="">Seleccionar categoría</option>
-                      {categories?.map((cat: { id: string; name: string }) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      <option value="">Seleccionar categoria</option>
+                      {categories?.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Ciudad <span className="text-red-500">*</span>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                      Ciudad <span className="text-[#EF4444]">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.city}
                       onChange={(e) => handleChange('city', e.target.value)}
-                      placeholder="Ej: Managua, Nicaragua"
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Modalidad <span className="text-red-500">*</span>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                      Modalidad <span className="text-[#EF4444]">*</span>
                     </label>
                     <select
                       value={formData.modality}
                       onChange={(e) => handleChange('modality', e.target.value)}
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     >
                       <option value="presencial">Presencial</option>
                       <option value="remoto">Remoto</option>
-                      <option value="hibrido">Híbrido</option>
+                      <option value="hibrido">Hibrido</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Tipo de jornada <span className="text-red-500">*</span>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                      Tipo de jornada <span className="text-[#EF4444]">*</span>
                     </label>
                     <select
                       value={formData.employmentType}
                       onChange={(e) => handleChange('employmentType', e.target.value)}
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     >
                       <option value="tiempo_completo">Tiempo completo</option>
                       <option value="medio_tiempo">Medio tiempo</option>
@@ -208,130 +260,84 @@ export default function NewJobPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Salario desde (C$) <span className="text-red-500">*</span>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                      Salario desde (C$) <span className="text-[#EF4444]">*</span>
                     </label>
                     <input
                       type="number"
                       value={formData.salaryMin}
                       onChange={(e) => handleChange('salaryMin', e.target.value)}
-                      placeholder="6,000"
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Salario hasta (C$)
-                    </label>
+                    <label className="mb-1.5 block text-sm font-medium text-[#334155]">Salario hasta (C$)</label>
                     <input
                       type="number"
                       value={formData.salaryMax}
                       onChange={(e) => handleChange('salaryMax', e.target.value)}
-                      placeholder="7,000"
-                      className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Descripción */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Descripción del puesto <span className="text-red-500">*</span>
+                <h3 className="mb-4 text-lg font-semibold text-[#0F172A]">
+                  Descripcion del puesto <span className="text-[#EF4444]">*</span>
                 </h3>
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <div className="flex items-center gap-1 border-b border-gray-200 bg-gray-50 px-3 py-2">
-                    <button className="p-1.5 rounded hover:bg-gray-200 font-bold text-gray-600">B</button>
-                    <button className="p-1.5 rounded hover:bg-gray-200 italic text-gray-600">I</button>
-                    <button className="p-1.5 rounded hover:bg-gray-200 underline text-gray-600">U</button>
-                    <span className="w-px h-4 bg-gray-300 mx-1" />
-                    <button className="p-1.5 rounded hover:bg-gray-200 text-gray-600">≡</button>
-                    <button className="p-1.5 rounded hover:bg-gray-200 text-gray-600">⋮≡</button>
-                  </div>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    rows={6}
-                    placeholder="Describe las responsabilidades y características del puesto..."
-                    className="w-full px-4 py-3 text-sm focus:outline-none resize-none"
-                  />
-                </div>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleChange('description', e.target.value)}
+                  rows={8}
+                  className="w-full rounded-lg border border-[#D1D9E6] px-4 py-3 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                />
               </CardContent>
             </Card>
 
-            {/* Requisitos y Beneficios */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Requisitos <span className="text-red-500">*</span>
-                    </h3>
-                    <span className="text-sm text-gray-500">{filledRequirements}/10</span>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-[#0F172A]">Requisitos</h3>
+                    <span className="text-sm font-semibold text-[#16A34A]">{filledRequirements}/10</span>
                   </div>
-                  <div className="space-y-3">
-                    {formData.requirements.map((req, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="text-gray-400">•</span>
-                        <input
-                          type="text"
-                          value={req}
-                          onChange={(e) => handleArrayChange('requirements', i, e.target.value)}
-                          placeholder={`Requisito ${i + 1}`}
-                          className="flex-1 h-9 rounded-lg border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                    {formData.requirements.length < 10 && (
-                      <button
-                        onClick={() => setFormData(prev => ({ ...prev, requirements: [...prev.requirements, ''] }))}
-                        className="text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        + Agregar requisito
-                      </button>
-                    )}
-                  </div>
+                  {formData.requirements.map((item, index) => (
+                    <input
+                      key={`req-${index}`}
+                      type="text"
+                      value={item}
+                      onChange={(e) => handleArrayChange('requirements', index, e.target.value)}
+                      className="mb-2 h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                    />
+                  ))}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Beneficios</h3>
-                    <span className="text-sm text-gray-500">{filledBenefits}/10</span>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-[#0F172A]">Beneficios</h3>
+                    <span className="text-sm font-semibold text-[#16A34A]">{filledBenefits}/10</span>
                   </div>
-                  <div className="space-y-3">
-                    {formData.benefits.map((ben, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="text-gray-400">•</span>
-                        <input
-                          type="text"
-                          value={ben}
-                          onChange={(e) => handleArrayChange('benefits', i, e.target.value)}
-                          placeholder={`Beneficio ${i + 1}`}
-                          className="flex-1 h-9 rounded-lg border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                    {formData.benefits.length < 10 && (
-                      <button
-                        onClick={() => setFormData(prev => ({ ...prev, benefits: [...prev.benefits, ''] }))}
-                        className="text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        + Agregar beneficio
-                      </button>
-                    )}
-                  </div>
+                  {formData.benefits.map((item, index) => (
+                    <input
+                      key={`ben-${index}`}
+                      type="text"
+                      value={item}
+                      onChange={(e) => handleArrayChange('benefits', index, e.target.value)}
+                      className="mb-2 h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                    />
+                  ))}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center justify-between pt-4">
-              <p className="text-sm text-red-500">* Campos obligatorios</p>
+              <p className="text-sm text-[#EF4444]">* Campos obligatorios</p>
               <div className="flex items-center gap-3">
                 <Button variant="outline" onClick={() => handleSubmit(false)} disabled={createMutation.isPending}>
                   <Save className="h-4 w-4" />
@@ -346,78 +352,38 @@ export default function NewJobPage() {
                 </Button>
               </div>
             </div>
+
+            {draftSaved && <p className="text-sm font-semibold text-[#16A34A]">Borrador guardado correctamente.</p>}
           </div>
 
-          {/* Sidebar - Plan Limits */}
           <div className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Límites de tu plan</h3>
-                <p className="text-sm text-gray-500 mb-6">Plan {planLimits?.plan?.name || 'Profesional'}</p>
+                <h3 className="mb-2 text-lg font-semibold text-[#0F172A]">Limites de tu plan</h3>
+                <p className="mb-6 text-sm text-[#64748B]">Plan {planLimits?.plan?.name || 'Profesional'}</p>
 
                 <div className="space-y-5">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">Vacantes activas</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {planLimits?.limits?.activeJobs?.current ?? 0} / {planLimits?.limits?.activeJobs?.max ?? 20}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100">
-                      <div
-                        className="h-2 rounded-full bg-blue-500"
-                        style={{ width: `${((planLimits?.limits?.activeJobs?.current ?? 0) / (planLimits?.limits?.activeJobs?.max ?? 20)) * 100}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">restantes {planLimits?.limits?.activeJobs?.remaining ?? 0}</p>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">Usuarios</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {planLimits?.limits?.users?.current ?? 0} / {planLimits?.limits?.users?.max ?? 5}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100">
-                      <div
-                        className="h-2 rounded-full bg-blue-500"
-                        style={{ width: `${((planLimits?.limits?.users?.current ?? 0) / (planLimits?.limits?.users?.max ?? 5)) * 100}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">restantes {planLimits?.limits?.users?.remaining ?? 0}</p>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">Candidatos visibles</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {planLimits?.limits?.visibleCandidates?.current ?? 0} / {planLimits?.limits?.visibleCandidates?.max ?? 500}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100">
-                      <div
-                        className="h-2 rounded-full bg-blue-500"
-                        style={{ width: `${((planLimits?.limits?.visibleCandidates?.current ?? 0) / (planLimits?.limits?.visibleCandidates?.max ?? 500)) * 100}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">restantes {planLimits?.limits?.visibleCandidates?.remaining ?? 0}</p>
-                  </div>
+                  <PlanProgress
+                    label="Vacantes activas"
+                    metric={planLimits?.limits?.activeJobs}
+                    icon={<Briefcase className="h-4 w-4 text-[#94A3B8]" />}
+                  />
+                  <PlanProgress
+                    label="Usuarios"
+                    metric={planLimits?.limits?.users}
+                    icon={<Users className="h-4 w-4 text-[#94A3B8]" />}
+                  />
+                  <PlanProgress
+                    label="Candidatos visibles"
+                    metric={planLimits?.limits?.visibleCandidates}
+                    icon={<Eye className="h-4 w-4 text-[#94A3B8]" />}
+                  />
                 </div>
 
-                <div className="mt-6 rounded-lg bg-blue-50 border border-blue-100 p-4">
-                  <h4 className="font-medium text-gray-900 mb-1">¿Necesitas más?</h4>
-                  <p className="text-sm text-gray-600 mb-3">Mejora tu plan y publica más vacantes.</p>
-                  <Button variant="outline" size="sm" className="w-full">
+                <div className="mt-6 rounded-lg border border-[#DCEBFF] bg-[#EAF2FF] p-4">
+                  <h4 className="mb-1 font-medium text-[#0F172A]">Necesitas mas?</h4>
+                  <p className="mb-3 text-sm text-[#475569]">Mejora tu plan y publica mas vacantes.</p>
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => router.push('/settings')}>
                     Ver planes
                   </Button>
                 </div>

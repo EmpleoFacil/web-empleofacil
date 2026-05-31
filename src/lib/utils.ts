@@ -57,3 +57,35 @@ export function getStatusLabel(status: string) {
   };
   return labels[status] || status;
 }
+
+export function getModalityLabel(modality?: string | null) {
+  const labels: Record<string, string> = {
+    presencial: 'Presencial',
+    remoto: 'Remoto',
+    remote: 'Remoto',
+    hibrido: 'Híbrido',
+    hybrid: 'Híbrido',
+  };
+  return labels[modality ?? ''] || modality || 'Presencial';
+}
+
+export function getDisplayName(email?: string | null): string {
+  if (!email) return 'Usuario';
+  const local = email.split('@')[0] ?? '';
+  const first = local.split(/[._-]/)[0] ?? local;
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+export function getRoleLabel(
+  role: 'company_admin' | 'super_admin',
+  companyUserRole?: string | null
+): string {
+  if (role === 'super_admin') return 'Administrador';
+  const companyRoles: Record<string, string> = {
+    admin: 'Administrador',
+    recruiter: 'Reclutador',
+    editor: 'Editor',
+    viewer: 'Visor',
+  };
+  return companyRoles[companyUserRole ?? ''] || 'Empresa';
+}

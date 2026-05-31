@@ -1,264 +1,488 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { 
-  Briefcase, Search, Filter, MapPin, Clock, Users, Building2,
-  MoreHorizontal, Eye, ExternalLink
+import { useState, useMemo } from 'react';
+import { useUrlSearchParam } from '@/lib/use-url-search-param';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Briefcase,
+  Search,
+  Filter,
+  MapPin,
+  Users,
+  Building2,
+  Eye,
+  Pause,
+  Play,
+  BarChart3,
+  XCircle,
+  DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Header } from '@/components/ui/header';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { jobs } from '@/lib/api';
-import { formatDate, getStatusLabel } from '@/lib/utils';
+import { StatCard } from '@/components/ui/stat-card';
+import { JobPreviewDrawer } from '@/components/jobs/job-preview-drawer';
+import { jobs, dashboard } from '@/lib/api';
+import { getStatusLabel, getModalityLabel } from '@/lib/utils';
+import { listQueryOptions, queryKeys } from '@/lib/query-config';
+
+type AdminJobRow = {
+  id: string;
+  title: string;
+  city: string | null;
+  modality?: string | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  status: string;
+  createdAt: string;
+  company: { id: string; name: string };
+  _count?: { applications: number };
+  applications?: number;
+};
+
+type JobsListResponse = {
+  items: AdminJobRow[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
+async function fetchAdminSummary() {
+  try {
+    const res = await jobs.getAdminSummary();
+    return res.data as {
+      active?: { value: number; trend?: number };
+      paused?: { value: number; trend?: number };
+      closed?: { value: number; trend?: number };
+      applications?: { value: number; trend?: number };
+    };
+  } catch {
+    const [activeRes, pausedRes, closedRes, dashRes] = await Promise.all([
+      jobs.getAdminJobs({ status: 'active', limit: 1, page: 1 }),
+      jobs.getAdminJobs({ status: 'paused', limit: 1, page: 1 }),
+      jobs.getAdminJobs({ status: 'closed', limit: 1, page: 1 }),
+      dashboard.getAdmin(),
+    ]);
+    return {
+      active: { value: activeRes.data.total ?? 0 },
+      paused: { value: pausedRes.data.total ?? 0 },
+      closed: { value: closedRes.data.total ?? 0 },
+      applications: { value: dashRes.data?.kpis?.applications?.value ?? 0 },
+    };
+  }
+}
 
 export default function AdminJobsPage() {
-  const [filters, setFilters] = useState({ search: '', status: '', companyId: '' });
+  const queryClient = useQueryClient();
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    city: '',
+    modality: '',
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    search: '',
+    status: '',
+    city: '',
+    modality: '',
+  });
   const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
+  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
 
-  const { data: jobsData, isLoading } = useQuery({
-    queryKey: ['jobs-admin', filters, page],
-    queryFn: () => jobs.getAdminJobs({ ...filters, page, limit: 15 }).then(res => res.data),
+  useUrlSearchParam((search) => {
+    const next = { search, status: '', city: '', modality: '' };
+    setFilters(next);
+    setAppliedFilters(next);
+    setPage(1);
   });
 
-  return (
-    <div className="min-h-screen">
-      <Header title="Vacantes Globales" subtitle="Todas las vacantes de la plataforma" />
+  const filterKey = useMemo(
+    () => ({
+      search: appliedFilters.search,
+      status: appliedFilters.status,
+      city: appliedFilters.city,
+      modality: appliedFilters.modality,
+    }),
+    [
+      appliedFilters.search,
+      appliedFilters.status,
+      appliedFilters.city,
+      appliedFilters.modality,
+    ]
+  );
 
-      <div className="p-6 space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Briefcase className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{jobsData?.stats?.total ?? 0}</p>
-                  <p className="text-sm text-gray-500">Total vacantes</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <Briefcase className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{jobsData?.stats?.active ?? 0}</p>
-                  <p className="text-sm text-gray-500">Activas</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{jobsData?.stats?.companies ?? 0}</p>
-                  <p className="text-sm text-gray-500">Empresas activas</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{jobsData?.stats?.applications ?? 0}</p>
-                  <p className="text-sm text-gray-500">Aplicaciones hoy</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.jobsAdminSummary,
+    queryFn: fetchAdminSummary,
+    ...listQueryOptions,
+  });
+
+  const { data: jobsData, isFetching } = useQuery({
+    queryKey: queryKeys.jobsAdmin(filterKey, page),
+    queryFn: async () => {
+      const params: Record<string, string | number> = { page, limit: 15 };
+      const search = appliedFilters.search.trim();
+      if (search) params.search = search;
+      if (appliedFilters.status) params.status = appliedFilters.status;
+
+      const res = await jobs.getAdminJobs(params);
+      const data = res.data as JobsListResponse;
+
+      let items = data.items ?? [];
+      if (appliedFilters.city.trim()) {
+        const cityLower = appliedFilters.city.trim().toLowerCase();
+        items = items.filter((j) => (j.city ?? '').toLowerCase().includes(cityLower));
+      }
+      if (appliedFilters.modality) {
+        items = items.filter((j) => (j.modality ?? '') === appliedFilters.modality);
+      }
+
+      return { ...data, items };
+    },
+    ...listQueryOptions,
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => jobs.updateStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobsAdminSummary });
+    },
+  });
+
+  const applyFilters = () => {
+    setAppliedFilters(filters);
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    const empty = { search: '', status: '', city: '', modality: '' };
+    setFilters(empty);
+    setAppliedFilters(empty);
+    setPage(1);
+  };
+
+  const metricCards = [
+    {
+      key: 'active',
+      title: 'Activas',
+      value: summary?.active?.value ?? 0,
+      trend: summary?.active?.trend,
+      icon: Play,
+      iconBg: 'bg-[#EAF8EF]',
+      iconColor: 'text-[#16A34A]',
+    },
+    {
+      key: 'paused',
+      title: 'Pausadas',
+      value: summary?.paused?.value ?? 0,
+      trend: summary?.paused?.trend,
+      icon: Pause,
+      iconBg: 'bg-[#FFF5E6]',
+      iconColor: 'text-[#F59E0B]',
+    },
+    {
+      key: 'closed',
+      title: 'Cerradas',
+      value: summary?.closed?.value ?? 0,
+      trend: summary?.closed?.trend,
+      icon: XCircle,
+      iconBg: 'bg-[#FEECEC]',
+      iconColor: 'text-[#EF4444]',
+    },
+    {
+      key: 'applications',
+      title: 'Total postulaciones',
+      value: summary?.applications?.value ?? 0,
+      trend: summary?.applications?.trend,
+      icon: Users,
+      iconBg: 'bg-[#F5EAFE]',
+      iconColor: 'text-[#A855F7]',
+    },
+  ];
+
+  const items = jobsData?.items ?? [];
+  const cityOptions = Array.from(new Set(items.map((job) => job.city).filter(Boolean) as string[])).sort();
+  const isInitialLoading = isFetching && !jobsData;
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <Header
+        title="Vacantes globales"
+        subtitle="Supervisa todas las vacantes publicadas en la plataforma."
+        actions={
+          <Button variant="outline" onClick={() => setShowFilters((prev) => !prev)}>
+            <Filter className="h-4 w-4" />
+            Filtros
+          </Button>
+        }
+      />
+
+      <div className="space-y-5 p-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          {metricCards.map((card) => (
+            <StatCard
+              key={card.key}
+              title={card.title}
+              value={card.value}
+              trend={card.trend}
+              period="mes anterior"
+              icon={card.icon}
+              iconBg={card.iconBg}
+              iconColor={card.iconColor}
+            />
+          ))}
         </div>
 
-        {/* Filters & Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4 flex-1">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar vacantes o empresas..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+        <Card className="rounded-[18px] border border-[#E6ECF5] shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <CardContent className="space-y-4 p-4 md:p-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+                <div className="relative md:col-span-4">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+                  <input
+                    type="text"
+                    placeholder="Buscar puesto, empresa o ciudad..."
+                    value={filters.search}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+                    className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white pl-9 pr-3 text-sm text-[#334155] placeholder:text-[#94A3B8] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <select
+                    value={filters.city}
+                    onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                    className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white px-3 text-sm text-[#334155] placeholder:text-[#94A3B8] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
+                  >
+                    <option value="">Todas las ciudades</option>
+                    {cityOptions.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <select
+                    value={filters.modality}
+                    onChange={(e) => setFilters({ ...filters, modality: e.target.value })}
+                    className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
+                  >
+                    <option value="">Todas las modalidades</option>
+                    <option value="presencial">Presencial</option>
+                    <option value="remoto">Remoto</option>
+                    <option value="hibrido">Híbrido</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                    className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
+                  >
+                    <option value="">Todos los estados</option>
+                    <option value="active">Activas</option>
+                    <option value="paused">Pausadas</option>
+                    <option value="closed">Cerradas</option>
+                  </select>
+                </div>
               </div>
-              <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-                <Filter className="h-4 w-4" />
-                Filtros
-              </Button>
-            </div>
-          </CardHeader>
-
-          {showFilters && (
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-              <div className="flex items-center gap-4">
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">Todos los estados</option>
-                  <option value="active">Activas</option>
-                  <option value="paused">Pausadas</option>
-                  <option value="closed">Cerradas</option>
-                </select>
-                <Button variant="ghost" size="sm" onClick={() => setFilters({ search: '', status: '', companyId: '' })}>
-                  Limpiar filtros
+            {showFilters && (
+              <div className="flex gap-2">
+                <Button variant="outline" className="h-10" onClick={clearFilters}>
+                  Limpiar
+                </Button>
+                <Button className="h-10" onClick={applyFilters}>
+                  Aplicar
                 </Button>
               </div>
-            </div>
-          )}
+            )}
 
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-              </div>
-            ) : jobsData?.jobs?.length ? (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Vacante</TableHead>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>Ubicación</TableHead>
-                      <TableHead>Aplicaciones</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Publicado</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {jobsData.jobs.map((job: {
-                      id: string;
-                      title: string;
-                      city: string | null;
-                      status: string;
-                      createdAt: string;
-                      company: { id: string; name: string };
-                      _count: { applications: number };
-                    }) => (
-                      <TableRow key={job.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                              <Briefcase className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <span className="font-medium text-gray-900">{job.title}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-gray-400" />
-                            <Link 
+            <div className="overflow-x-auto rounded-lg border border-[#E6ECF5]">
+              <table className="min-w-full divide-y divide-[#E6ECF5] bg-white">
+                <thead className="bg-[#F8FAFC]">
+                  <tr>
+                    {[
+                      'Puesto',
+                      'Empresa',
+                      'Ciudad',
+                      'Modalidad',
+                      'Salario',
+                      'Estado',
+                      'Postulaciones',
+                      'Acciones',
+                    ].map((col) => (
+                      <th
+                        key={col}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748B]"
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EEF2F7]">
+                  {isInitialLoading ? (
+                    <tr>
+                      <td className="px-4 py-10 text-center text-sm text-[#64748B]" colSpan={8}>
+                        Cargando vacantes...
+                      </td>
+                    </tr>
+                  ) : items.length ? (
+                    items.map((job) => {
+                      const applicationsCount = job._count?.applications ?? job.applications ?? 0;
+                      const hasSalary =
+                        typeof job.salaryMin === 'number' || typeof job.salaryMax === 'number';
+                      const salaryText = hasSalary
+                        ? `C$ ${job.salaryMin?.toLocaleString() ?? '-'} - C$ ${job.salaryMax?.toLocaleString() ?? '-'}`
+                        : 'No definido';
+
+                      return (
+                        <tr key={job.id} className="hover:bg-[#F8FAFC]">
+                          <td className="px-4 py-3">
+                            <span className="font-medium text-[#0F172A]">{job.title}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Link
                               href={`/admin/companies/${job.company.id}`}
-                              className="text-blue-600 hover:underline"
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0B5CFF] hover:text-[#004BDD]"
                             >
+                              <Building2 className="h-4 w-4 text-[#94A3B8]" />
                               {job.company.name}
                             </Link>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-gray-500">
-                            <MapPin className="h-4 w-4" />
-                            {job.city || 'Remoto'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{job._count?.applications ?? 0}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(job.status)}>
-                            {getStatusLabel(job.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-gray-500">
-                            <Clock className="h-4 w-4" />
-                            {formatDate(job.createdAt)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Link
-                              href={`/admin/jobs/${job.id}`}
-                              className="p-2 rounded-lg hover:bg-gray-100"
-                            >
-                              <Eye className="h-4 w-4 text-gray-500" />
-                            </Link>
-                            <a
-                              href={`/jobs/${job.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 rounded-lg hover:bg-gray-100"
-                            >
-                              <ExternalLink className="h-4 w-4 text-gray-500" />
-                            </a>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#475569]">
+                            <span className="inline-flex items-center gap-1.5">
+                              <MapPin className="h-4 w-4 text-[#94A3B8]" />
+                              {job.city || 'Remoto'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#475569]">
+                            {getModalityLabel(job.modality)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#334155]">
+                            <span className="inline-flex items-center gap-1">
+                              <DollarSign className="h-4 w-4 text-[#94A3B8]" />
+                              {salaryText}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant={getStatusBadgeVariant(job.status)}>
+                              {getStatusLabel(job.status)}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-[#0F172A]">
+                            {applicationsCount}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                title="Ver"
+                                onClick={() => setPreviewJobId(job.id)}
+                                className="rounded-md border border-[#E6ECF5] p-1.5 text-[#64748B] hover:bg-[#F1F5F9]"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                              {job.status === 'active' ? (
+                                <button
+                                  type="button"
+                                  title="Pausar"
+                                  onClick={() =>
+                                    updateStatusMutation.mutate({ id: job.id, status: 'paused' })
+                                  }
+                                  className="rounded-md border border-[#E6ECF5] p-1.5 text-[#F59E0B] hover:bg-amber-50"
+                                >
+                                  <Pause className="h-4 w-4" />
+                                </button>
+                              ) : job.status === 'paused' ? (
+                                <button
+                                  type="button"
+                                  title="Activar"
+                                  onClick={() =>
+                                    updateStatusMutation.mutate({ id: job.id, status: 'active' })
+                                  }
+                                  className="rounded-md border border-[#E6ECF5] p-1.5 text-[#16A34A] hover:bg-emerald-50"
+                                >
+                                  <Play className="h-4 w-4" />
+                                </button>
+                              ) : null}
+                              {job.status !== 'closed' && (
+                                <button
+                                  type="button"
+                                  title="Cerrar"
+                                  onClick={() =>
+                                    updateStatusMutation.mutate({ id: job.id, status: 'closed' })
+                                  }
+                                  className="rounded-md border border-[#E6ECF5] p-1.5 text-[#64748B] hover:bg-[#F1F5F9]"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                              )}
+                              <Link
+                                href={`/admin/companies/${job.company.id}`}
+                                title="Analítica empresa"
+                                className="rounded-md border border-[#E6ECF5] p-1.5 text-[#64748B] hover:bg-[#F1F5F9]"
+                              >
+                                <BarChart3 className="h-4 w-4" />
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td className="px-4 py-12 text-center" colSpan={8}>
+                        <Briefcase className="mx-auto h-8 w-8 text-[#CBD5E1]" />
+                        <p className="mt-2 text-sm font-medium text-[#1E293B]">No hay vacantes</p>
+                        <p className="mt-1 text-xs text-[#64748B]">
+                          No se encontraron vacantes con los filtros actuales.
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-                {/* Pagination */}
-                {jobsData.pagination && (
-                  <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
-                    <p className="text-sm text-gray-500">
-                      Mostrando {((page - 1) * 15) + 1} a {Math.min(page * 15, jobsData.pagination.total)} de {jobsData.pagination.total} vacantes
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page === 1}
-                        onClick={() => setPage(page - 1)}
-                      >
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= jobsData.pagination.pages}
-                        onClick={() => setPage(page + 1)}
-                      >
-                        Siguiente
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="py-12 text-center">
-                <Briefcase className="mx-auto h-12 w-12 text-gray-300" />
-                <p className="mt-4 text-lg font-medium text-gray-900">No hay vacantes</p>
-                <p className="mt-1 text-sm text-gray-500">No se encontraron vacantes con los filtros actuales</p>
+            {typeof jobsData?.total === 'number' && jobsData.total > 0 && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[#64748B]">
+                  Mostrando {(page - 1) * 15 + 1} a {Math.min(page * 15, jobsData.total)} de{' '}
+                  {jobsData.total} vacantes
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-sm font-medium text-[#64748B]">
+                    {page} / {jobsData.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= jobsData.totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      <JobPreviewDrawer jobId={previewJobId} onClose={() => setPreviewJobId(null)} />
     </div>
   );
 }

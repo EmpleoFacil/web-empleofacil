@@ -1,273 +1,506 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Users, Search, Filter, Download, LayoutGrid, List, MapPin,
-  MoreHorizontal, Calendar, MessageSquare, FileText, ChevronDown
+  Calendar,
+  ChevronDown,
+  Download,
+  Filter,
+  LayoutGrid,
+  List,
+  MapPin,
+  MessageSquare,
+  MoreHorizontal,
+  Search,
+  StickyNote,
 } from 'lucide-react';
 import { Header } from '@/components/ui/header';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
-import { api, jobs } from '@/lib/api';
-import { formatDate, getStatusLabel, cn } from '@/lib/utils';
+import { applications, interviews, jobs, messages } from '@/lib/api';
+import { cn, formatDate, getStatusLabel } from '@/lib/utils';
 
-type ViewMode = 'pipeline' | 'table';
+type ViewMode = 'table' | 'pipeline';
 
-const PIPELINE_COLUMNS = [
-  { key: 'applied', label: 'Nuevos', color: 'bg-blue-500' },
-  { key: 'reviewing', label: 'En revisión', color: 'bg-yellow-500' },
-  { key: 'interview_scheduled', label: 'Preseleccionados', color: 'bg-purple-500' },
-  { key: 'interview_confirmed', label: 'Entrevista', color: 'bg-indigo-500' },
-  { key: 'rejected', label: 'Descartados', color: 'bg-gray-400' },
+type AppStatus = 'applied' | 'reviewing' | 'preselected' | 'interview_scheduled' | 'rejected' | string;
+
+type PipelineApplication = {
+  id: string;
+  status: AppStatus;
+  appliedAt: string;
+  candidate: {
+    id: string;
+    fullName: string;
+    city?: string | null;
+    email?: string | null;
+  };
+  job: {
+    id: string;
+    title: string;
+    city?: string | null;
+  };
+};
+
+type PipelineResponse = Record<string, PipelineApplication[]>;
+
+type TableResponse = {
+  items?: PipelineApplication[];
+  applications?: PipelineApplication[];
+  total?: number;
+  page?: number;
+  totalPages?: number;
+};
+
+type SummaryResponse = Record<string, { value?: number }>;
+
+type CompanyJob = { id: string; title: string };
+
+type ColumnConfig = {
+  key: string;
+  label: string;
+  accent: string;
+  aliases: string[];
+};
+
+const columns: ColumnConfig[] = [
+  { key: 'applied', label: 'Nuevos', accent: 'border-[#0B5CFF] text-[#0B5CFF]', aliases: ['new'] },
+  { key: 'reviewing', label: 'En revision', accent: 'border-[#0B5CFF] text-[#0B5CFF]', aliases: ['in_review'] },
+  { key: 'preselected', label: 'Preseleccionados', accent: 'border-[#16A34A] text-[#16A34A]', aliases: ['shortlisted'] },
+  {
+    key: 'interview_scheduled',
+    label: 'Entrevista',
+    accent: 'border-[#F59E0B] text-[#F59E0B]',
+    aliases: ['interview_confirmed', 'interview'],
+  },
+  { key: 'rejected', label: 'Descartados', accent: 'border-[#EF4444] text-[#EF4444]', aliases: ['discarded'] },
 ];
 
-interface Candidate {
-  id: string;
-  status: string;
-  appliedAt: string;
-  candidate: { id: string; fullName: string; city: string | null };
-  job: { id: string; title: string };
+function getColumnItems(data: PipelineResponse | undefined, column: ColumnConfig): PipelineApplication[] {
+  if (!data) return [];
+  if (Array.isArray(data[column.key])) return data[column.key];
+  for (const alias of column.aliases) {
+    if (Array.isArray(data[alias])) return data[alias];
+  }
+  return [];
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  window.URL.revokeObjectURL(url);
 }
 
 export default function CandidatesPage() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('pipeline');
-  const [filters, setFilters] = useState({ search: '', jobId: '', status: '' });
-  const [showFilters, setShowFilters] = useState(false);
+  const [jobId, setJobId] = useState('');
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<PipelineApplication | null>(null);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [interviewDate, setInterviewDate] = useState('');
+  const [interviewType, setInterviewType] = useState('presencial');
 
   const { data: summary } = useQuery({
-    queryKey: ['applications-summary'],
-    queryFn: () => api.get('/applications/company/summary').then(res => res.data),
-  });
-
-  const { data: pipeline, isLoading: pipelineLoading } = useQuery({
-    queryKey: ['applications-pipeline', filters.jobId],
-    queryFn: () => api.get('/applications/company/pipeline', { params: { jobId: filters.jobId || undefined } }).then(res => res.data),
-    enabled: viewMode === 'pipeline',
-  });
-
-  const { data: tableData, isLoading: tableLoading } = useQuery({
-    queryKey: ['applications-table', filters],
-    queryFn: () => api.get('/applications/company', { params: filters }).then(res => res.data),
-    enabled: viewMode === 'table',
+    queryKey: ['applications-company-summary'],
+    queryFn: () => applications.getSummary().then((res) => res.data as SummaryResponse),
   });
 
   const { data: companyJobs } = useQuery({
-    queryKey: ['company-jobs-filter'],
-    queryFn: () => jobs.getCompanyJobs({ limit: 100 }).then(res => res.data.items),
+    queryKey: ['jobs-company-filter'],
+    queryFn: () => jobs.getCompanyJobs({ page: 1, limit: 100 }).then((res) => (res.data.items ?? []) as CompanyJob[]),
   });
 
+  const { data: pipelineData, isPending: pipelineLoading } = useQuery({
+    queryKey: ['applications-company-pipeline', jobId],
+    queryFn: () => applications.getPipeline({ ...(jobId ? { jobId } : {}) }).then((res) => res.data as PipelineResponse),
+    enabled: viewMode === 'pipeline',
+  });
+
+  const { data: tableData, isPending: tableLoading } = useQuery({
+    queryKey: ['applications-company-table', jobId, status, search],
+    queryFn: () =>
+      applications
+        .getByCompany({ page: 1, limit: 50, ...(jobId ? { jobId } : {}), ...(status ? { status } : {}), ...(search ? { search } : {}) })
+        .then((res) => res.data as TableResponse),
+    enabled: viewMode === 'table',
+  });
+
+  const filteredPipeline = useMemo(() => {
+    if (!pipelineData) return {} as PipelineResponse;
+    const term = search.trim().toLowerCase();
+
+    const out: PipelineResponse = {};
+    for (const column of columns) {
+      let items = getColumnItems(pipelineData, column);
+      if (jobId) items = items.filter((item) => item.job?.id === jobId);
+      if (term) {
+        items = items.filter((item) => {
+          const bag = `${item.candidate?.fullName ?? ''} ${item.job?.title ?? ''} ${item.candidate?.city ?? ''}`.toLowerCase();
+          return bag.includes(term);
+        });
+      }
+      out[column.key] = items;
+    }
+
+    return out;
+  }, [pipelineData, jobId, search]);
+
+  const tableItems = useMemo(() => {
+    const source = tableData?.items ?? tableData?.applications ?? [];
+    const term = search.trim().toLowerCase();
+
+    return source.filter((item) => {
+      const passStatus = status ? item.status === status : true;
+      const passJob = jobId ? item.job?.id === jobId : true;
+      const passSearch = term
+        ? `${item.candidate?.fullName ?? ''} ${item.job?.title ?? ''} ${item.candidate?.city ?? ''}`.toLowerCase().includes(term)
+        : true;
+      return passStatus && passJob && passSearch;
+    });
+  }, [tableData, status, jobId, search]);
+
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.patch(`/applications/${id}/status`, { status }),
+    mutationFn: ({ id, nextStatus }: { id: string; nextStatus: string }) => applications.updateStatus(id, nextStatus),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applications-pipeline'] });
-      queryClient.invalidateQueries({ queryKey: ['applications-table'] });
-      queryClient.invalidateQueries({ queryKey: ['applications-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['applications-company-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['applications-company-pipeline'] });
+      queryClient.invalidateQueries({ queryKey: ['applications-company-table'] });
       setActiveMenu(null);
     },
   });
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    updateStatusMutation.mutate({ id, status: newStatus });
+  const addNoteMutation = useMutation({
+    mutationFn: ({ id, content }: { id: string; content: string }) => applications.addNote(id, content),
+    onSuccess: () => {
+      setNoteModalOpen(false);
+      setNoteText('');
+      setSelectedApplication(null);
+    },
+  });
+
+  const createInterviewMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => interviews.create(payload),
+    onSuccess: () => {
+      setScheduleModalOpen(false);
+      setInterviewDate('');
+      setInterviewType('presencial');
+      setSelectedApplication(null);
+    },
+  });
+
+  const createMessageMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => messages.create(payload),
+    onSuccess: () => {
+      setMessageModalOpen(false);
+      setMessageTitle('');
+      setMessageBody('');
+      setSelectedApplication(null);
+    },
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const res = await applications.getExport({ ...(jobId ? { jobId } : {}), ...(status ? { status } : {}) });
+      const raw = res.data;
+
+      if (raw instanceof Blob) {
+        downloadBlob(raw, 'candidatos-postulaciones.csv');
+        return;
+      }
+
+      if (typeof raw === 'string') {
+        downloadBlob(new Blob([raw], { type: 'text/csv;charset=utf-8' }), 'candidatos-postulaciones.csv');
+        return;
+      }
+
+      const rows = Array.isArray(raw) ? raw : [];
+      const csv = [
+        'Candidato,Vacante,Ciudad,Estado,Fecha',
+        ...rows.map((row: Record<string, unknown>) => {
+          const candidate = (row.candidate as Record<string, unknown> | undefined)?.fullName ?? '';
+          const job = (row.job as Record<string, unknown> | undefined)?.title ?? '';
+          const city = (row.candidate as Record<string, unknown> | undefined)?.city ?? '';
+          const st = String(row.status ?? '');
+          const applied = String(row.appliedAt ?? row.createdAt ?? '');
+          return `${candidate},${job},${city},${st},${applied}`;
+        }),
+      ].join('\n');
+
+      downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'candidatos-postulaciones.csv');
+    },
+  });
+
+  const openAction = (action: 'note' | 'schedule' | 'message', app: PipelineApplication) => {
+    setSelectedApplication(app);
+    setActiveMenu(null);
+    if (action === 'note') setNoteModalOpen(true);
+    if (action === 'schedule') setScheduleModalOpen(true);
+    if (action === 'message') {
+      setMessageTitle(`Seguimiento: ${app.job?.title ?? 'Postulacion'}`);
+      setMessageBody('');
+      setMessageModalOpen(true);
+    }
   };
 
-  const handleExport = async () => {
-    const data = await api.get('/applications/company/export', { params: { jobId: filters.jobId || undefined } });
-    const csv = [
-      ['Nombre', 'Teléfono', 'Ciudad', 'Vacante', 'Estado', 'Fecha'],
-      ...data.data.map((a: { candidate: { fullName: string; phone: string; city: string }; job: { title: string }; status: string; appliedAt: string }) => [
-        a.candidate.fullName, a.candidate.phone, a.candidate.city, a.job.title, a.status, a.appliedAt
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'candidatos.csv';
-    a.click();
-  };
+  const viewToggle = (
+    <div className="flex items-center rounded-xl border border-[#E6ECF5] bg-white p-1">
+      <button
+        type="button"
+        onClick={() => setViewMode('table')}
+        className={cn(
+          'inline-flex h-11 items-center gap-2 rounded-lg px-6 text-sm font-semibold transition-colors',
+          viewMode === 'table' ? 'bg-[#F1F5F9] text-[#0F172A]' : 'text-[#64748B] hover:text-[#334155]'
+        )}
+      >
+        <List className="h-4 w-4" />
+        Tabla
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode('pipeline')}
+        className={cn(
+          'inline-flex h-11 items-center gap-2 rounded-lg px-6 text-sm font-semibold transition-colors',
+          viewMode === 'pipeline' ? 'bg-[#0B5CFF] text-white' : 'text-[#64748B] hover:text-[#334155]'
+        )}
+      >
+        <LayoutGrid className="h-4 w-4" />
+        Pipeline
+      </button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header title="Candidatos / postulaciones" subtitle="Administra los candidatos que se han postulado a tus vacantes." />
-
-      <div className="p-6 space-y-6">
-        {/* View Toggle & Actions */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
-            <button
-              onClick={() => setViewMode('table')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                viewMode === 'table' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <List className="h-4 w-4" />
-              Tabla
-            </button>
-            <button
-              onClick={() => setViewMode('pipeline')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                viewMode === 'pipeline' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Pipeline
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handleExport}>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <Header
+        title="Candidatos / postulaciones"
+        subtitle="Administra los candidatos que se han postulado a tus vacantes."
+        actions={
+          <>
+            {viewToggle}
+            <Button variant="outline" className="h-11" onClick={() => exportMutation.mutate()}>
               <Download className="h-4 w-4" />
               Exportar
             </Button>
-            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+            <Button variant="outline" className="h-11">
               <Filter className="h-4 w-4" />
               Filtros
             </Button>
+          </>
+        }
+      />
+
+      <div className="space-y-5 p-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#334155]">Vacante</label>
+            <select
+              value={jobId}
+              onChange={(event) => setJobId(event.target.value)}
+              className="h-12 w-full rounded-xl border border-[#E6ECF5] bg-white px-4 text-sm font-semibold text-[#334155] outline-none focus:border-[#0B5CFF]"
+            >
+              <option value="">Todas las vacantes</option>
+              {companyJobs?.map((job) => (
+                <option key={job.id} value={job.id}>
+                  {job.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#334155]">Estado</label>
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="h-12 w-full rounded-xl border border-[#E6ECF5] bg-white px-4 text-sm font-semibold text-[#334155] outline-none focus:border-[#0B5CFF]"
+            >
+              <option value="">Todos los estados</option>
+              {columns.map((column) => (
+                <option key={column.key} value={column.key}>
+                  {column.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#334155]">Buscar</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar candidato..."
+                className="h-12 w-full rounded-xl border border-[#E6ECF5] bg-white pl-11 pr-4 text-sm font-medium text-[#334155] outline-none focus:border-[#0B5CFF]"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <Card className={showFilters ? '' : 'hidden'}>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-4">
-              <select
-                value={filters.jobId}
-                onChange={(e) => setFilters({ ...filters, jobId: e.target.value })}
-                className="h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none min-w-[200px]"
-              >
-                <option value="">Todas las vacantes</option>
-                {companyJobs?.map((job: { id: string; title: string }) => (
-                  <option key={job.id} value={job.id}>{job.title}</option>
-                ))}
-              </select>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">Todos los estados</option>
-                <option value="applied">Nuevos</option>
-                <option value="reviewing">En revisión</option>
-                <option value="interview_scheduled">Entrevista</option>
-                <option value="rejected">Descartados</option>
-              </select>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar candidato..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pipeline View */}
-        {viewMode === 'pipeline' && (
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {PIPELINE_COLUMNS.map((col) => {
-              const items = pipeline?.[col.key] || [];
-              const count = items.length;
-
+        {viewMode === 'pipeline' ? (
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {columns.map((column) => {
+              const items = filteredPipeline[column.key] ?? [];
               return (
-                <div key={col.key} className="flex-shrink-0 w-72">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={cn('w-3 h-3 rounded-full', col.color)} />
-                    <h3 className="font-semibold text-gray-900">{col.label}</h3>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{count}</span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {pipelineLoading ? (
-                      <div className="h-32 bg-gray-100 rounded-lg animate-pulse" />
-                    ) : items.length > 0 ? (
-                      <>
-                        {items.slice(0, 5).map((app: Candidate) => (
-                          <CandidateCard
-                            key={app.id}
-                            application={app}
-                            activeMenu={activeMenu}
-                            setActiveMenu={setActiveMenu}
-                            onStatusChange={handleStatusChange}
-                          />
-                        ))}
-                        {items.length > 5 && (
-                          <button className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
-                            + Ver más
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <div className="py-8 text-center text-sm text-gray-400">
-                        Sin candidatos
+                <div key={column.key} className="min-w-[270px] flex-1">
+                  <Card className={cn('border-t-[4px]', column.accent)}>
+                    <CardContent className="p-3">
+                      <div className="mb-3 flex items-center justify-between px-2 pt-1">
+                        <h3 className={cn('text-[33px] font-bold leading-8', column.accent.split(' ')[1])}>
+                          <span className="text-lg font-bold">{column.label}</span>
+                        </h3>
+                        <span className="rounded-full bg-[#F1F5F9] px-2 py-0.5 text-sm font-bold text-[#64748B]">
+                          {items.length}
+                        </span>
                       </div>
-                    )}
-                  </div>
+
+                      {pipelineLoading ? (
+                        <div className="space-y-3">
+                          {Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="h-28 animate-pulse rounded-xl bg-[#F1F5F9]" />
+                          ))}
+                        </div>
+                      ) : items.length ? (
+                        <div className="space-y-3">
+                          {items.map((application) => (
+                            <div key={application.id} className="rounded-xl border border-[#E6ECF5] bg-white p-3">
+                              <div className="mb-3 flex items-start justify-between gap-2">
+                                <Link href={`/candidates/${application.candidate.id}`} className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-bold text-[#0F172A] hover:text-[#0B5CFF]">
+                                    {application.candidate.fullName}
+                                  </p>
+                                  <p className="truncate text-sm font-medium text-[#64748B]">{application.job.title}</p>
+                                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#64748B]">
+                                    <MapPin className="h-3 w-3" />
+                                    {application.candidate.city || application.job.city || 'Sin ciudad'}
+                                  </p>
+                                </Link>
+
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    className="rounded-md p-1 text-[#64748B] hover:bg-[#F8FAFC]"
+                                    onClick={() => setActiveMenu(activeMenu === application.id ? null : application.id)}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+
+                                  {activeMenu === application.id && (
+                                    <div className="absolute right-0 top-8 z-30 w-56 rounded-xl border border-[#E6ECF5] bg-white py-1 shadow-lg">
+                                      <p className="px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Cambiar estado</p>
+                                      {columns.map((targetColumn) => (
+                                        <button
+                                          key={targetColumn.key}
+                                          type="button"
+                                          onClick={() =>
+                                            updateStatusMutation.mutate({ id: application.id, nextStatus: targetColumn.key })
+                                          }
+                                          className="block w-full px-3 py-2 text-left text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                                        >
+                                          {targetColumn.label}
+                                        </button>
+                                      ))}
+                                      <div className="my-1 border-t border-[#EEF2F7]" />
+                                      <button
+                                        type="button"
+                                        onClick={() => openAction('note', application)}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                                      >
+                                        <StickyNote className="h-4 w-4" />
+                                        Anadir nota
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openAction('schedule', application)}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                                      >
+                                        <Calendar className="h-4 w-4" />
+                                        Programar entrevista
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openAction('message', application)}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                                      >
+                                        <MessageSquare className="h-4 w-4" />
+                                        Enviar mensaje
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <p className="text-sm font-semibold text-[#64748B]">{formatDate(application.appliedAt)}</p>
+                            </div>
+                          ))}
+                          <button type="button" className="w-full py-2 text-sm font-bold text-[#0B5CFF] hover:text-[#004BDD]">
+                            + Ver mas
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-[#E6ECF5] py-12 text-center text-sm font-medium text-[#94A3B8]">
+                          Sin candidatos
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               );
             })}
           </div>
-        )}
-
-        {/* Table View */}
-        {viewMode === 'table' && (
+        ) : (
           <Card>
             <CardContent className="p-0">
               {tableLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                <div className="flex items-center justify-center py-16">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0B5CFF] border-t-transparent" />
                 </div>
-              ) : tableData?.applications?.length ? (
+              ) : tableItems.length ? (
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="border-b border-[#EEF2F7] bg-[#F8FAFC]">
                     <tr>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Candidato</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Vacante</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Estado</th>
-                      <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Fecha</th>
-                      <th className="px-6 py-3 w-12"></th>
+                      {['Candidato', 'Vacante', 'Estado', 'Fecha', 'Acciones'].map((head) => (
+                        <th key={head} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#64748B]">
+                          {head}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {tableData.applications.map((app: Candidate) => (
-                      <tr key={app.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <span className="text-sm font-medium text-blue-600">
-                                {app.candidate.fullName.charAt(0)}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{app.candidate.fullName}</p>
-                              <div className="flex items-center gap-1 text-sm text-gray-500">
-                                <MapPin className="h-3 w-3" />
-                                {app.candidate.city || 'Sin ubicación'}
-                              </div>
-                            </div>
-                          </div>
+                  <tbody className="divide-y divide-[#EEF2F7]">
+                    {tableItems.map((application) => (
+                      <tr key={application.id} className="hover:bg-[#F8FAFC]">
+                        <td className="px-5 py-4">
+                          <Link href={`/candidates/${application.candidate.id}`} className="text-sm font-bold text-[#0F172A] hover:text-[#0B5CFF]">
+                            {application.candidate.fullName}
+                          </Link>
+                          <p className="mt-0.5 text-xs text-[#64748B]">{application.candidate.city || 'Sin ciudad'}</p>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{app.job.title}</td>
-                        <td className="px-6 py-4">
-                          <Badge variant={getStatusBadgeVariant(app.status)}>
-                            {getStatusLabel(app.status)}
-                          </Badge>
+                        <td className="px-5 py-4 text-sm font-medium text-[#334155]">{application.job.title}</td>
+                        <td className="px-5 py-4">
+                          <Badge variant={getStatusBadgeVariant(application.status)}>{getStatusLabel(application.status)}</Badge>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{formatDate(app.appliedAt)}</td>
-                        <td className="px-6 py-4">
-                          <button className="p-2 rounded-lg hover:bg-gray-100">
-                            <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                        <td className="px-5 py-4 text-sm font-medium text-[#64748B]">{formatDate(application.appliedAt)}</td>
+                        <td className="px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() => setActiveMenu(activeMenu === application.id ? null : application.id)}
+                            className="rounded-lg border border-[#E6ECF5] p-2 text-[#64748B] hover:bg-[#F8FAFC]"
+                          >
+                            <ChevronDown className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>
@@ -275,94 +508,161 @@ export default function CandidatesPage() {
                   </tbody>
                 </table>
               ) : (
-                <div className="py-12 text-center">
-                  <Users className="mx-auto h-12 w-12 text-gray-300" />
-                  <p className="mt-4 text-lg font-medium text-gray-900">No hay postulaciones</p>
-                  <p className="mt-1 text-sm text-gray-500">Las postulaciones aparecerán aquí cuando los candidatos apliquen</p>
+                <div className="py-16 text-center">
+                  <p className="text-base font-semibold text-[#0F172A]">No hay postulaciones</p>
+                  <p className="mt-1 text-sm text-[#64748B]">Cuando lleguen candidatos, apareceran aqui.</p>
                 </div>
               )}
             </CardContent>
           </Card>
         )}
       </div>
+
+      {noteModalOpen && selectedApplication && (
+        <SimpleModal
+          title="Anadir nota interna"
+          onClose={() => {
+            setNoteModalOpen(false);
+            setSelectedApplication(null);
+            setNoteText('');
+          }}
+          footer={
+            <Button
+              onClick={() => addNoteMutation.mutate({ id: selectedApplication.id, content: noteText })}
+              disabled={!noteText.trim() || addNoteMutation.isPending}
+            >
+              Guardar nota
+            </Button>
+          }
+        >
+          <textarea
+            rows={5}
+            value={noteText}
+            onChange={(event) => setNoteText(event.target.value)}
+            placeholder="Escribe una nota para el equipo..."
+            className="w-full rounded-xl border border-[#E6ECF5] px-3 py-2 text-sm outline-none focus:border-[#0B5CFF]"
+          />
+        </SimpleModal>
+      )}
+
+      {scheduleModalOpen && selectedApplication && (
+        <SimpleModal
+          title="Programar entrevista"
+          onClose={() => {
+            setScheduleModalOpen(false);
+            setSelectedApplication(null);
+          }}
+          footer={
+            <Button
+              onClick={() =>
+                createInterviewMutation.mutate({
+                  applicationId: selectedApplication.id,
+                  candidateId: selectedApplication.candidate.id,
+                  jobId: selectedApplication.job.id,
+                  date: interviewDate,
+                  type: interviewType,
+                })
+              }
+              disabled={!interviewDate || createInterviewMutation.isPending}
+            >
+              Crear entrevista
+            </Button>
+          }
+        >
+          <div className="grid grid-cols-1 gap-3">
+            <input
+              type="datetime-local"
+              value={interviewDate}
+              onChange={(event) => setInterviewDate(event.target.value)}
+              className="h-11 rounded-xl border border-[#E6ECF5] px-3 text-sm outline-none focus:border-[#0B5CFF]"
+            />
+            <select
+              value={interviewType}
+              onChange={(event) => setInterviewType(event.target.value)}
+              className="h-11 rounded-xl border border-[#E6ECF5] px-3 text-sm outline-none focus:border-[#0B5CFF]"
+            >
+              <option value="presencial">Presencial</option>
+              <option value="video">Videoentrevista</option>
+            </select>
+          </div>
+        </SimpleModal>
+      )}
+
+      {messageModalOpen && selectedApplication && (
+        <SimpleModal
+          title="Enviar mensaje"
+          onClose={() => {
+            setMessageModalOpen(false);
+            setSelectedApplication(null);
+          }}
+          footer={
+            <Button
+              onClick={() =>
+                createMessageMutation.mutate({
+                  applicationId: selectedApplication.id,
+                  candidateId: selectedApplication.candidate.id,
+                  title: messageTitle,
+                  body: messageBody,
+                  status: 'sent',
+                })
+              }
+              disabled={!messageTitle.trim() || !messageBody.trim() || createMessageMutation.isPending}
+            >
+              Enviar
+            </Button>
+          }
+        >
+          <div className="grid grid-cols-1 gap-3">
+            <input
+              type="text"
+              value={messageTitle}
+              onChange={(event) => setMessageTitle(event.target.value)}
+              placeholder="Asunto"
+              className="h-11 rounded-xl border border-[#E6ECF5] px-3 text-sm outline-none focus:border-[#0B5CFF]"
+            />
+            <textarea
+              rows={6}
+              value={messageBody}
+              onChange={(event) => setMessageBody(event.target.value)}
+              placeholder="Mensaje"
+              className="rounded-xl border border-[#E6ECF5] px-3 py-2 text-sm outline-none focus:border-[#0B5CFF]"
+            />
+          </div>
+        </SimpleModal>
+      )}
+
+      {summary ? <div className="hidden" aria-hidden>{JSON.stringify(summary)}</div> : null}
     </div>
   );
 }
 
-function CandidateCard({
-  application,
-  activeMenu,
-  setActiveMenu,
-  onStatusChange,
+function SimpleModal({
+  title,
+  onClose,
+  children,
+  footer,
 }: {
-  application: Candidate;
-  activeMenu: string | null;
-  setActiveMenu: (id: string | null) => void;
-  onStatusChange: (id: string, status: string) => void;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-sm font-medium text-blue-600">
-              {application.candidate.fullName.charAt(0)}
-            </span>
-          </div>
-          <div>
-            <p className="font-medium text-gray-900 text-sm">{application.candidate.fullName}</p>
-            <p className="text-xs text-gray-500">{application.job.title}</p>
-          </div>
-        </div>
-        <div className="relative">
-          <button
-            onClick={() => setActiveMenu(activeMenu === application.id ? null : application.id)}
-            className="p-1 rounded hover:bg-gray-100"
-          >
-            <MoreHorizontal className="h-4 w-4 text-gray-400" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/40 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
+          <h3 className="text-lg font-bold text-[#0F172A]">{title}</h3>
+          <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC]" onClick={onClose}>
+            Cerrar
           </button>
-          {activeMenu === application.id && (
-            <div className="absolute right-0 top-8 z-10 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
-              <button
-                onClick={() => onStatusChange(application.id, 'reviewing')}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                Mover a revisión
-              </button>
-              <button
-                onClick={() => onStatusChange(application.id, 'interview_scheduled')}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <Calendar className="h-4 w-4" />
-                Programar entrevista
-              </button>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                <MessageSquare className="h-4 w-4" />
-                Enviar mensaje
-              </button>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                <FileText className="h-4 w-4" />
-                Añadir nota
-              </button>
-              <hr className="my-1" />
-              <button
-                onClick={() => onStatusChange(application.id, 'rejected')}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-              >
-                Descartar
-              </button>
-            </div>
-          )}
         </div>
-      </div>
-
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <MapPin className="h-3 w-3" />
-        <span>{application.candidate.city || 'Sin ubicación'}</span>
-      </div>
-
-      <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-400">
-        {formatDate(application.appliedAt)}
+        <div className="p-5">{children}</div>
+        <div className="flex justify-end gap-2 border-t border-[#EEF2F7] px-5 py-4">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          {footer}
+        </div>
       </div>
     </div>
   );

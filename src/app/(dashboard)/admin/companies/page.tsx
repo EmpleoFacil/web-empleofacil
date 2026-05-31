@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useUrlSearchParam } from '@/lib/use-url-search-param';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building2, Search, Filter, Plus, Eye, Edit, Trash, MoreHorizontal,
@@ -50,6 +51,7 @@ const planColors: Record<string, string> = {
 export default function AdminCompaniesPage() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState({ status: '', planId: '', search: '', page: 1 });
+  useUrlSearchParam((search) => setFilters((f) => ({ ...f, search, page: 1 })));
   const [showNewModal, setShowNewModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -116,22 +118,16 @@ export default function AdminCompaniesPage() {
             trend={summary?.active?.trend}
             period="mes anterior"
             icon={CheckCircle}
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
           />
           <StatCard
             title="Empresas suspendidas"
             value={summary?.suspended?.value ?? 0}
             icon={XCircle}
-            iconBg="bg-red-100"
-            iconColor="text-red-600"
           />
           <StatCard
             title="Por aprobar"
             value={summary?.pending?.value ?? 0}
             icon={Clock}
-            iconBg="bg-yellow-100"
-            iconColor="text-yellow-600"
           />
           <StatCard
             title="Total empresas"
@@ -139,8 +135,6 @@ export default function AdminCompaniesPage() {
             trend={summary?.total?.trend}
             period="mes anterior"
             icon={Building2}
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
           />
         </div>
 

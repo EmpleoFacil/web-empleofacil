@@ -18,40 +18,44 @@ export function StatCard({
   trend,
   period,
   icon: Icon,
-  iconColor = 'text-blue-600',
-  iconBg = 'bg-blue-100',
+  iconBg,
+  iconColor,
 }: StatCardProps) {
   const isPositive = trend !== undefined && trend >= 0;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
-          {trend !== undefined && (
-            <div className="mt-2 flex items-center gap-1">
-              {isPositive ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-500" />
-              )}
-              <span
-                className={cn(
-                  'text-sm font-medium',
-                  isPositive ? 'text-green-600' : 'text-red-600'
-                )}
-              >
-                {isPositive ? '+' : ''}{trend}%
-              </span>
-              {period && <span className="text-sm text-gray-400">vs {period}</span>}
-            </div>
+    <div className="rounded-[20px] border border-[#EAEFF7] bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <div
+          className={cn(
+            'flex h-10 w-10 items-center justify-center rounded-xl',
+            iconBg || 'bg-[#EAF2FF]'
           )}
+        >
+          <Icon className={cn('h-5 w-5', iconColor || 'text-[#0B5CFF]')} />
         </div>
-        <div className={cn('rounded-lg p-3', iconBg)}>
-          <Icon className={cn('h-6 w-6', iconColor)} />
-        </div>
+        <p className="text-[14px] font-semibold text-[#334155]">{title}</p>
       </div>
+      <p className="text-[40px] font-bold leading-[44px] text-[#0F172A]">{value}</p>
+      {trend !== undefined && (
+        <div className="mt-2 flex items-center gap-1">
+          {isPositive ? (
+            <TrendingUp className="h-4 w-4 text-[#16A34A]" />
+          ) : (
+            <TrendingDown className="h-4 w-4 text-[#EF4444]" />
+          )}
+          <span
+            className={cn(
+              'text-xs font-semibold',
+              isPositive ? 'text-[#16A34A]' : 'text-[#EF4444]'
+            )}
+          >
+            {isPositive ? '+' : ''}
+            {trend}%
+          </span>
+          {period && <span className="text-xs text-[#94A3B8]">vs {period}</span>}
+        </div>
+      )}
     </div>
   );
 }

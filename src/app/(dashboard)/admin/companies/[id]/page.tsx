@@ -196,8 +196,6 @@ export default function CompanyDetailPage() {
             trend={metrics?.activeJobs?.trend}
             period="hace 30 días"
             icon={Briefcase}
-            iconBg="bg-blue-100"
-            iconColor="text-blue-600"
           />
           <StatCard
             title="Postulaciones"
@@ -205,8 +203,6 @@ export default function CompanyDetailPage() {
             trend={metrics?.totalApplications?.trend}
             period="hace 30 días"
             icon={FileText}
-            iconBg="bg-purple-100"
-            iconColor="text-purple-600"
           />
           <StatCard
             title="Entrevistas programadas"
@@ -214,8 +210,6 @@ export default function CompanyDetailPage() {
             trend={metrics?.scheduledInterviews?.trend}
             period="hace 7 días"
             icon={Calendar}
-            iconBg="bg-indigo-100"
-            iconColor="text-indigo-600"
           />
           <StatCard
             title="Contrataciones"
@@ -223,8 +217,6 @@ export default function CompanyDetailPage() {
             trend={metrics?.hires?.trend}
             period="hace 30 días"
             icon={UserCheck}
-            iconBg="bg-green-100"
-            iconColor="text-green-600"
           />
           <StatCard
             title="Tasa de respuesta"
@@ -232,8 +224,6 @@ export default function CompanyDetailPage() {
             trend={8}
             period="hace 30 días"
             icon={TrendingUp}
-            iconBg="bg-yellow-100"
-            iconColor="text-yellow-600"
           />
         </div>
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -60,10 +60,10 @@ const statusTabs = [
 ];
 
 const statusTone: Record<string, string> = {
-  sent: 'bg-amber-100 text-amber-700',
-  responded: 'bg-emerald-100 text-emerald-700',
-  read: 'bg-blue-100 text-blue-700',
-  draft: 'bg-slate-100 text-slate-700',
+  sent: 'bg-[#FFF5E6] text-[#D97706]',
+  responded: 'bg-[#EAF8EF] text-emerald-700',
+  read: 'bg-[#EAF2FF] text-[#0B5CFF]',
+  draft: 'bg-[#F1F5F9] text-[#334155]',
 };
 
 const statusLabel: Record<string, string> = {
@@ -206,11 +206,25 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header title="Mensajes" subtitle="Comunicate de manera estructurada con tus candidatos y centraliza toda la conversacion." />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <Header
+        title="Mensajes"
+        subtitle="Comunícate de manera estructurada con los candidatos y gestiona todas tus comunicaciones."
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setShowTemplates(true)}>
+              Plantillas de mensaje
+            </Button>
+            <Button onClick={() => setShowNewModal(true)}>
+              <Plus className="h-4 w-4" />
+              Nuevo mensaje
+            </Button>
+          </>
+        }
+      />
 
       <div className="space-y-4 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {statusTabs.map((tab) => {
               const count = counts[tab.id as keyof typeof counts] || 0;
@@ -223,12 +237,12 @@ export default function MessagesPage() {
                   className={cn(
                     'inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
                     isActive
-                      ? 'border-blue-300 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                      ? 'border-blue-300 bg-[#EAF2FF] text-[#0B5CFF]'
+                      : 'border-[#E6ECF5] bg-white text-[#475569] hover:bg-[#F1F5F9]'
                   )}
                 >
                   <span>{tab.label}</span>
-                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs', isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500')}>
+                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs', isActive ? 'bg-[#EAF2FF] text-[#0B5CFF]' : 'bg-[#F1F5F9] text-[#64748B]')}>
                     {count}
                   </span>
                 </button>
@@ -236,31 +250,22 @@ export default function MessagesPage() {
             })}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShowTemplates(true)}>
-              Plantillas de mensaje
-            </Button>
-            <Button onClick={() => setShowNewModal(true)}>
-              <Plus className="h-4 w-4" />
-              Nuevo mensaje
-            </Button>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-4">
-            <CardHeader className="flex-col items-stretch gap-3 border-b border-slate-100">
+            <CardHeader className="flex-col items-stretch gap-3 border-b border-[#EEF2F7]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar mensaje o candidato..."
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white pl-9 pr-3 text-sm text-[#334155] placeholder:text-[#94A3B8] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
                 />
               </div>
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 hover:bg-slate-100">
+              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#E6ECF5] bg-white px-3 text-sm font-medium text-[#475569] hover:bg-[#F1F5F9]">
                 <Filter className="h-4 w-4" />
                 Filtros
               </button>
@@ -272,10 +277,10 @@ export default function MessagesPage() {
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                 </div>
               ) : filteredMessages.length ? (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-[#EEF2F7]">
                   {filteredMessages.map((message) => {
                     const selected = message.id === effectiveSelectedMessageId;
-                    const tone = statusTone[message.status] || 'bg-slate-100 text-slate-700';
+                    const tone = statusTone[message.status] || 'bg-[#F1F5F9] text-[#334155]';
                     const when = message.sentAt || message.createdAt || '';
 
                     return (
@@ -284,25 +289,25 @@ export default function MessagesPage() {
                         onClick={() => setSelectedMessageId(message.id)}
                         className={cn(
                           'w-full border-l-2 px-4 py-3 text-left transition-colors',
-                          selected ? 'border-l-blue-600 bg-blue-50/70' : 'border-l-transparent hover:bg-slate-50'
+                          selected ? 'border-l-blue-600 bg-[#EAF2FF]/70' : 'border-l-transparent hover:bg-[#F8FAFC]'
                         )}
                       >
                         <div className="mb-2 flex items-start justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-2">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E6ECF5] text-xs font-semibold text-[#334155]">
                               {message.candidate?.fullName?.charAt(0)?.toUpperCase() || 'C'}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-slate-900">{message.candidate?.fullName || 'Candidato'}</p>
-                              <p className="truncate text-xs text-slate-500">{message.application?.job?.title || 'Sin vacante vinculada'}</p>
+                              <p className="truncate text-sm font-semibold text-[#0F172A]">{message.candidate?.fullName || 'Candidato'}</p>
+                              <p className="truncate text-xs text-[#64748B]">{message.application?.job?.title || 'Sin vacante vinculada'}</p>
                             </div>
                           </div>
-                          <p className="shrink-0 text-[11px] text-slate-400">{when ? formatDateTime(when) : ''}</p>
+                          <p className="shrink-0 text-[11px] text-[#94A3B8]">{when ? formatDateTime(when) : ''}</p>
                         </div>
 
-                        <p className="truncate text-sm font-medium text-slate-800">{message.title}</p>
+                        <p className="truncate text-sm font-medium text-[#1E293B]">{message.title}</p>
                         <div className="mt-2 flex items-center justify-between gap-2">
-                          <p className="line-clamp-1 text-xs text-slate-500">{message.body}</p>
+                          <p className="line-clamp-1 text-xs text-[#64748B]">{message.body}</p>
                           <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', tone)}>
                             {statusLabel[message.status] || message.status}
                           </span>
@@ -313,8 +318,8 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 <div className="px-6 py-14 text-center">
-                  <Mail className="mx-auto h-10 w-10 text-slate-300" />
-                  <p className="mt-3 text-sm text-slate-500">No hay mensajes para este filtro.</p>
+                  <Mail className="mx-auto h-10 w-10 text-[#CBD5E1]" />
+                  <p className="mt-3 text-sm text-[#64748B]">No hay mensajes para este filtro.</p>
                 </div>
               )}
             </CardContent>
@@ -326,55 +331,55 @@ export default function MessagesPage() {
                 <CardHeader>
                   <div className="flex w-full items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#EAF2FF] px-2 py-1 text-[11px] font-semibold text-[#0B5CFF]">
                         <MessageSquare className="h-3.5 w-3.5" />
                         {typeLabel[selectedMessage.type || 'general_message'] || 'Mensaje'}
                       </span>
-                      <span className={cn('rounded-full px-2 py-1 text-[11px] font-semibold', statusTone[selectedMessage.status] || 'bg-slate-100 text-slate-700')}>
+                      <span className={cn('rounded-full px-2 py-1 text-[11px] font-semibold', statusTone[selectedMessage.status] || 'bg-[#F1F5F9] text-[#334155]')}>
                         {statusLabel[selectedMessage.status] || selectedMessage.status}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">{formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt || new Date().toISOString())}</p>
+                    <p className="text-xs text-[#94A3B8]">{formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt || new Date().toISOString())}</p>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-5 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6ECF5] text-sm font-semibold text-[#334155]">
                       {selectedMessage.candidate?.fullName?.charAt(0)?.toUpperCase() || 'C'}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{selectedMessage.candidate?.fullName || 'Candidato'}</p>
-                      <p className="truncate text-xs text-slate-500">{selectedMessage.application?.job?.title || 'Sin vacante vinculada'}</p>
+                      <p className="truncate text-sm font-semibold text-[#0F172A]">{selectedMessage.candidate?.fullName || 'Candidato'}</p>
+                      <p className="truncate text-xs text-[#64748B]">{selectedMessage.application?.job?.title || 'Sin vacante vinculada'}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-xs text-slate-400">
+                  <div className="space-y-2 rounded-lg border border-[#E6ECF5] bg-white p-4">
+                    <p className="text-xs text-[#94A3B8]">
                       Para: {selectedMessage.candidate?.email || selectedMessage.candidate?.fullName || 'Candidato'}
                     </p>
-                    <h3 className="text-lg font-semibold text-slate-900">{selectedMessage.title}</h3>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{selectedMessage.body}</p>
+                    <h3 className="text-lg font-semibold text-[#0F172A]">{selectedMessage.title}</h3>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#334155]">{selectedMessage.body}</p>
                   </div>
 
                   {selectedMessage.responses?.length ? (
-                    <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4">
-                      <p className="text-sm font-semibold text-emerald-800">Respuestas del candidato</p>
+                    <div className="space-y-3 rounded-lg border border-[#B8E6C8] bg-emerald-50/60 p-4">
+                      <p className="text-sm font-semibold text-[#15803D]">Respuestas del candidato</p>
                       {selectedMessage.responses.map((response) => (
-                        <div key={response.id} className="rounded-md border border-emerald-200 bg-white p-3">
-                          <p className="text-sm text-slate-700">{response.body}</p>
-                          <p className="mt-1 text-[11px] text-slate-400">{formatDateTime(response.createdAt)}</p>
+                        <div key={response.id} className="rounded-md border border-[#B8E6C8] bg-white p-3">
+                          <p className="text-sm text-[#334155]">{response.body}</p>
+                          <p className="mt-1 text-[11px] text-[#94A3B8]">{formatDateTime(response.createdAt)}</p>
                         </div>
                       ))}
                     </div>
                   ) : null}
 
-                  <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-slate-600">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Nota interna</p>
+                  <div className="rounded-lg border border-[#DCEBFF] bg-[#EAF2FF]/70 p-3 text-sm text-[#475569]">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#0B5CFF]">Nota interna</p>
                     <p className="mt-1">Mantener seguimiento en maximo 24 horas para mejorar conversion de respuesta.</p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-[#EEF2F7] pt-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -401,8 +406,8 @@ export default function MessagesPage() {
             ) : (
               <CardContent className="flex h-full min-h-[500px] items-center justify-center">
                 <div className="text-center">
-                  <MessageSquare className="mx-auto h-12 w-12 text-slate-300" />
-                  <p className="mt-3 text-sm text-slate-500">Selecciona un mensaje para ver el detalle.</p>
+                  <MessageSquare className="mx-auto h-12 w-12 text-[#CBD5E1]" />
+                  <p className="mt-3 text-sm text-[#64748B]">Selecciona un mensaje para ver el detalle.</p>
                 </div>
               </CardContent>
             )}
@@ -412,28 +417,28 @@ export default function MessagesPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Plantillas de mensaje</CardTitle>
-                <button onClick={() => setShowTemplates(true)} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                <button onClick={() => setShowTemplates(true)} className="text-sm font-semibold text-[#0B5CFF] hover:text-[#0B5CFF]">
                   Ver todas
                 </button>
               </CardHeader>
               <CardContent className="space-y-3 p-4">
                 {templates.slice(0, 5).map((template) => (
-                  <div key={template.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div key={template.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E6ECF5] bg-[#F8FAFC] p-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{template.name}</p>
-                      <p className="truncate text-xs text-slate-500">{template.subject}</p>
+                      <p className="truncate text-sm font-semibold text-[#0F172A]">{template.name}</p>
+                      <p className="truncate text-xs text-[#64748B]">{template.subject}</p>
                     </div>
-                    <button className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50">
+                    <button className="rounded-md border border-[#DCEBFF] bg-white px-2 py-1 text-xs font-semibold text-[#0B5CFF] hover:bg-[#EAF2FF]">
                       Usar
                     </button>
                   </div>
                 ))}
 
-                {!templates.length && <p className="text-sm text-slate-500">No hay plantillas disponibles.</p>}
+                {!templates.length && <p className="text-sm text-[#64748B]">No hay plantillas disponibles.</p>}
 
                 <button
                   onClick={() => setShowTemplates(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#E6ECF5] bg-white px-3 py-2 text-sm font-medium text-[#475569] hover:bg-[#F1F5F9]"
                 >
                   <Plus className="h-4 w-4" />
                   Nueva plantilla
@@ -452,12 +457,12 @@ export default function MessagesPage() {
                   'Indica los proximos pasos y tiempos estimados.',
                   'Usa plantillas para mantener consistencia.',
                 ].map((tip) => (
-                  <p key={tip} className="flex items-start gap-2 text-sm text-slate-600">
+                  <p key={tip} className="flex items-start gap-2 text-sm text-[#475569]">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                     {tip}
                   </p>
                 ))}
-                <button className="pt-1 text-sm font-semibold text-blue-600 hover:text-blue-700">Ver guia completa</button>
+                <button className="pt-1 text-sm font-semibold text-[#0B5CFF] hover:text-[#0B5CFF]">Ver guia completa</button>
               </CardContent>
             </Card>
           </div>
@@ -506,14 +511,14 @@ function StatusMenu({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+        className="inline-flex h-8 items-center gap-2 rounded-lg border border-[#E6ECF5] bg-white px-3 text-xs font-semibold text-[#334155] hover:bg-[#F1F5F9] disabled:opacity-50"
       >
         Cambiar estado
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-9 z-20 min-w-[160px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+        <div className="absolute left-0 top-9 z-20 min-w-[160px] rounded-lg border border-[#E6ECF5] bg-white py-1 shadow-lg">
           {['sent', 'responded', 'read', 'draft'].map((status) => (
             <button
               key={status}
@@ -522,8 +527,8 @@ function StatusMenu({
                 setOpen(false);
               }}
               className={cn(
-                'block w-full px-3 py-2 text-left text-xs font-medium hover:bg-slate-50',
-                currentStatus === status ? 'text-blue-700' : 'text-slate-600'
+                'block w-full px-3 py-2 text-left text-xs font-medium hover:bg-[#F8FAFC]',
+                currentStatus === status ? 'text-[#0B5CFF]' : 'text-[#475569]'
               )}
             >
               {statusLabel[status] || status}
@@ -572,14 +577,14 @@ function NewMessageModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50 p-4">
+      <div className="w-full max-w-2xl rounded-[18px] bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#E6ECF5] px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Nuevo mensaje</h2>
-            <p className="text-xs text-slate-500">Selecciona una postulacion y envia un mensaje al candidato.</p>
+            <h2 className="text-lg font-semibold text-[#0F172A]">Nuevo mensaje</h2>
+            <p className="text-xs text-[#64748B]">Selecciona una postulacion y envia un mensaje al candidato.</p>
           </div>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
+          <button onClick={onClose} className="rounded-md p-1 text-[#64748B] hover:bg-[#F1F5F9]">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -593,7 +598,7 @@ function NewMessageModal({
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Postulacion</label>
+              <label className="mb-1 block text-sm font-medium text-[#334155]">Postulacion</label>
               <select
                 value={selectedApplicationId}
                 onChange={(e) => {
@@ -610,7 +615,7 @@ function NewMessageModal({
                     title: prev.title || `Seguimiento: ${selected.job.title}`,
                   }));
                 }}
-                className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
                 required
               >
                 <option value="">Selecciona una postulacion</option>
@@ -623,11 +628,11 @@ function NewMessageModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Tipo</label>
+              <label className="mb-1 block text-sm font-medium text-[#334155]">Tipo</label>
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
               >
                 <option value="general_message">General</option>
                 <option value="interview_invitation">Invitacion entrevista</option>
@@ -638,33 +643,33 @@ function NewMessageModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Asunto</label>
+            <label className="mb-1 block text-sm font-medium text-[#334155]">Asunto</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
               required
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Mensaje</label>
+            <label className="mb-1 block text-sm font-medium text-[#334155]">Mensaje</label>
             <textarea
               value={form.body}
               onChange={(e) => setForm({ ...form, body: e.target.value })}
               rows={7}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
               required
             />
           </div>
 
           {templates.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Aplicar plantilla</label>
+              <label className="mb-1 block text-sm font-medium text-[#334155]">Aplicar plantilla</label>
               <select
                 onChange={(e) => applyTemplate(e.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
                 defaultValue=""
               >
                 <option value="" disabled>
@@ -679,7 +684,7 @@ function NewMessageModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-[#EEF2F7] pt-4">
             <Button variant="outline" type="button" onClick={onClose}>
               Cancelar
             </Button>
@@ -714,12 +719,12 @@ function TemplatesDrawer({ templates, onClose }: { templates: Template[]; onClos
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
       <div className="relative h-full w-full max-w-lg overflow-y-auto bg-white shadow-2xl">
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+        <div className="sticky top-0 flex items-center justify-between border-b border-[#E6ECF5] bg-white px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Plantillas de mensaje</h2>
-            <p className="text-xs text-slate-500">Crea y administra textos reutilizables.</p>
+            <h2 className="text-lg font-semibold text-[#0F172A]">Plantillas de mensaje</h2>
+            <p className="text-xs text-[#64748B]">Crea y administra textos reutilizables.</p>
           </div>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
+          <button onClick={onClose} className="rounded-md p-1 text-[#64748B] hover:bg-[#F1F5F9]">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -732,19 +737,19 @@ function TemplatesDrawer({ templates, onClose }: { templates: Template[]; onClos
               createMutation.mutate(form);
             }}
           >
-            <p className="text-sm font-semibold text-slate-900">Nueva plantilla</p>
+            <p className="text-sm font-semibold text-[#0F172A]">Nueva plantilla</p>
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="Nombre"
-              className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
+              className="h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm"
               required
             />
             <input
               value={form.subject}
               onChange={(e) => setForm({ ...form, subject: e.target.value })}
               placeholder="Asunto"
-              className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
+              className="h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm"
               required
             />
             <textarea
@@ -752,7 +757,7 @@ function TemplatesDrawer({ templates, onClose }: { templates: Template[]; onClos
               onChange={(e) => setForm({ ...form, body: e.target.value })}
               rows={4}
               placeholder="Contenido..."
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2 text-sm"
               required
             />
             <Button className="w-full" disabled={createMutation.isPending}>
@@ -761,36 +766,36 @@ function TemplatesDrawer({ templates, onClose }: { templates: Template[]; onClos
           </form>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-slate-900">Plantillas existentes</p>
+            <p className="text-sm font-semibold text-[#0F172A]">Plantillas existentes</p>
             {templates.length ? (
               templates.map((template) => (
-                <div key={template.id} className="rounded-lg border border-slate-200 p-3">
+                <div key={template.id} className="rounded-lg border border-[#E6ECF5] p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{template.name}</p>
-                      <p className="truncate text-xs text-slate-500">{template.subject}</p>
+                      <p className="truncate text-sm font-semibold text-[#0F172A]">{template.name}</p>
+                      <p className="truncate text-xs text-[#64748B]">{template.subject}</p>
                     </div>
                     <button
                       onClick={() => deleteMutation.mutate(template.id)}
-                      className="rounded-md border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                      className="rounded-md border border-[#F5C6C6] px-2 py-1 text-xs font-semibold text-[#EF4444] hover:bg-rose-50"
                     >
                       Eliminar
                     </button>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-xs text-slate-600">{template.body}</p>
+                  <p className="mt-2 line-clamp-2 text-xs text-[#475569]">{template.body}</p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No hay plantillas.</p>
+              <p className="text-sm text-[#64748B]">No hay plantillas.</p>
             )}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <div className="rounded-lg border border-[#E6ECF5] bg-[#F8FAFC] p-3">
+            <p className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[#475569]">
               <Sparkles className="h-3.5 w-3.5" />
               Sugerencia
             </p>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-[#475569]">
               Mantener una plantilla por etapa mejora la consistencia de comunicacion en todo el equipo.
             </p>
           </div>

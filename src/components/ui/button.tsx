@@ -18,18 +18,18 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 font-bold leading-5 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
         {
-          'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500': variant === 'primary',
-          'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500': variant === 'secondary',
-          'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500': variant === 'outline',
-          'text-gray-700 hover:bg-gray-100 focus:ring-gray-500': variant === 'ghost',
-          'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500': variant === 'danger',
+          'rounded-[14px] bg-[#0B5CFF] text-white hover:bg-[#004BDD] focus:ring-[#0B5CFF] shadow-sm': variant === 'primary',
+          'rounded-[14px] bg-[#F1F5F9] text-[#334155] hover:bg-[#E2E8F0] focus:ring-[#94A3B8]': variant === 'secondary',
+          'rounded-[14px] border border-[#E6ECF5] bg-white text-[#334155] hover:bg-[#F8FAFC] hover:border-[#0B5CFF] hover:text-[#0B5CFF] focus:ring-[#0B5CFF]': variant === 'outline',
+          'rounded-[14px] text-[#334155] hover:bg-[#F1F5F9] focus:ring-[#94A3B8]': variant === 'ghost',
+          'rounded-[14px] bg-[#EF4444] text-white hover:bg-[#DC2626] focus:ring-[#EF4444] shadow-sm': variant === 'danger',
         },
         {
-          'h-8 px-3 text-sm': size === 'sm',
-          'h-10 px-4 text-sm': size === 'md',
-          'h-12 px-6 text-base': size === 'lg',
+          'h-9 px-3 text-xs': size === 'sm',
+          'h-11 px-5 text-[15px] font-bold': size === 'md',
+          'h-12 px-7 text-base': size === 'lg',
         },
         className
       )}

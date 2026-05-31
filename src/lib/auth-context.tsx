@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import Cookies from 'js-cookie';
-import { auth } from './api';
+import { auth, companies } from './api';
 
 interface User {
   id: string;
@@ -10,6 +10,8 @@ interface User {
   role: 'company_admin' | 'super_admin';
   companyId?: string;
   companyName?: string;
+  companyCity?: string;
+  companyUserRole?: string;
 }
 
 interface AuthContextType {
@@ -21,6 +23,48 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+type MeResponse = {
+  id: string;
+  email: string | null;
+  role: string;
+  companyUsers?: {
+    companyId: string;
+    role?: string;
+    company?: { name?: string; city?: string | null };
+  }[];
+};
+
+function mapMeToUser(data: MeResponse, companyProfile?: { name?: string; city?: string | null }): User {
+  const companyLink = data.companyUsers?.[0];
+  const companyFromLink = companyLink?.company;
+  const companyId = companyLink?.companyId;
+  return {
+    id: data.id,
+    email: data.email ?? '',
+    role: data.role as User['role'],
+    companyId,
+    companyName: companyProfile?.name ?? companyFromLink?.name,
+    companyCity: companyProfile?.city ?? companyFromLink?.city ?? undefined,
+    companyUserRole: companyLink?.role,
+  };
+}
+
+async function resolveUserFromSession(): Promise<User | null> {
+  const res = await auth.getMe();
+  const data = res.data as MeResponse;
+
+  if (data.role !== 'super_admin' && data.companyUsers?.[0]?.companyId) {
+    try {
+      const companyRes = await companies.getMe();
+      return mapMeToUser(data, companyRes.data);
+    } catch {
+      return mapMeToUser(data);
+    }
+  }
+
+  return mapMeToUser(data);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = Cookies.get('token');
     if (token) {
-      auth.getMe()
-        .then((res) => setUser(res.data))
+      resolveUserFromSession()
+        .then(setUser)
         .catch(() => Cookies.remove('token'))
         .finally(() => setLoading(false));
     } else {
@@ -40,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await auth.login(email, password);
     Cookies.set('token', res.data.accessToken, { expires: 7 });
-    setUser(res.data.user);
+    const sessionUser = await resolveUserFromSession();
+    setUser(sessionUser);
   };
 
   const logout = () => {
