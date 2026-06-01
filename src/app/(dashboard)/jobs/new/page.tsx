@@ -8,6 +8,7 @@ import { Briefcase, Eye, Save, Send, Users } from 'lucide-react';
 import { Header } from '@/components/ui/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { companies, jobs } from '@/lib/api';
 
 type JobCategory = { id: string; name: string };
@@ -267,6 +268,7 @@ export default function NewJobPage() {
                       type="number"
                       value={formData.salaryMin}
                       onChange={(e) => handleChange('salaryMin', e.target.value)}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
@@ -277,6 +279,7 @@ export default function NewJobPage() {
                       type="number"
                       value={formData.salaryMax}
                       onChange={(e) => handleChange('salaryMax', e.target.value)}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
@@ -289,11 +292,11 @@ export default function NewJobPage() {
                 <h3 className="mb-4 text-lg font-semibold text-[#0F172A]">
                   Descripcion del puesto <span className="text-[#EF4444]">*</span>
                 </h3>
-                <textarea
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                  rows={8}
-                  className="w-full rounded-lg border border-[#D1D9E6] px-4 py-3 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                  onChange={(html) => handleChange('description', html)}
+                  placeholder="Describe las responsabilidades y caracteristicas del puesto..."
+                  minHeightClassName="min-h-[220px]"
                 />
               </CardContent>
             </Card>

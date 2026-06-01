@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from 'clsx';
+﻿import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
@@ -50,6 +50,11 @@ export function getStatusColor(status: string) {
 
 export function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
+    applied: 'Postulado',
+    preselected: 'Preseleccionado',
+    interview_scheduled: 'Entrevista programada',
+    interview_confirmed: 'Entrevista confirmada',
+    discarded: 'Descartado',
     active: 'Activa',
     paused: 'Pausada',
     closed: 'Cerrada',
@@ -67,8 +72,8 @@ export function getModalityLabel(modality?: string | null) {
     presencial: 'Presencial',
     remoto: 'Remoto',
     remote: 'Remoto',
-    hibrido: 'Híbrido',
-    hybrid: 'Híbrido',
+    hibrido: 'HÃ­brido',
+    hybrid: 'HÃ­brido',
   };
   return labels[modality ?? ''] || modality || 'Presencial';
 }
@@ -93,3 +98,4 @@ export function getRoleLabel(
   };
   return companyRoles[companyUserRole ?? ''] || 'Empresa';
 }
+

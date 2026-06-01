@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Save, Send, Info, Briefcase, Users, Eye,
@@ -13,18 +13,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { Table, TableHead, TableHeader, TableRow, TableCell, TableBody } from '@/components/ui/table';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { jobs, applications as appsApi, companies } from '@/lib/api';
 import { formatDate, getStatusLabel } from '@/lib/utils';
 
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const id = params.id as string;
 
   const [formData, setFormData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const forceEdit = searchParams.get('edit') === '1';
+  const editing = isEditing || forceEdit;
 
   const { data: jobData, isLoading } = useQuery({
     queryKey: ['job', id],
@@ -148,7 +153,7 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Header title={jobData.title} subtitle="Detalle y edición de la vacante." />
+      <Header title={jobData.title} subtitle="Detalle y ediciÃ³n de la vacante." />
 
       <div className="p-6">
         <div className="mb-6 flex items-center justify-between">
@@ -171,8 +176,8 @@ export default function JobDetailPage() {
                 Activar
               </Button>
             ) : null}
-            {isEditing ? (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+            {editing ? (
+              <Button variant="outline" size="sm" onClick={() => { setIsEditing(false); if (forceEdit) router.replace(`/jobs/${id}`); }}>
                 Cancelar
               </Button>
             ) : (
@@ -190,15 +195,15 @@ export default function JobDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Información general */}
+            {/* InformaciÃ³n general */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-6">Información general</h3>
-                {isEditing ? (
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-6">InformaciÃ³n general</h3>
+                {editing ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-[#334155] mb-1.5">
-                        Título del puesto <span className="text-[#EF4444]">*</span>
+                        TÃ­tulo del puesto <span className="text-[#EF4444]">*</span>
                       </label>
                       <input
                         type="text"
@@ -209,13 +214,13 @@ export default function JobDetailPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#334155] mb-1.5">Categoría</label>
+                      <label className="block text-sm font-medium text-[#334155] mb-1.5">CategorÃ­a</label>
                       <select
                         value={formData?.categoryId || ''}
                         onChange={(e) => handleChange('categoryId', e.target.value)}
                         className="w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                       >
-                        <option value="">Seleccionar categoría</option>
+                        <option value="">Seleccionar categorÃ­a</option>
                         {categories?.map((cat: { id: string; name: string }) => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
@@ -240,7 +245,7 @@ export default function JobDetailPage() {
                       >
                         <option value="presencial">Presencial</option>
                         <option value="remoto">Remoto</option>
-                        <option value="hibrido">Híbrido</option>
+                        <option value="hibrido">HÃ­brido</option>
                       </select>
                     </div>
                     <div>
@@ -262,6 +267,7 @@ export default function JobDetailPage() {
                         type="number"
                         value={formData?.salaryMin || ''}
                         onChange={(e) => handleChange('salaryMin', e.target.value)}
+                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                         placeholder="6,000"
                         className="w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-1 focus:ring-[#0B5CFF]"
                       />
@@ -272,6 +278,7 @@ export default function JobDetailPage() {
                         type="number"
                         value={formData?.salaryMax || ''}
                         onChange={(e) => handleChange('salaryMax', e.target.value)}
+                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                         placeholder="7,000"
                         className="w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-1 focus:ring-[#0B5CFF]"
                       />
@@ -280,8 +287,8 @@ export default function JobDetailPage() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
-                      <p className="text-xs text-[#64748B] mb-1">Categoría</p>
-                      <p className="text-sm font-medium text-[#0F172A]">{jobData.category?.name || 'Sin categoría'}</p>
+                      <p className="text-xs text-[#64748B] mb-1">CategorÃ­a</p>
+                      <p className="text-sm font-medium text-[#0F172A]">{jobData.category?.name || 'Sin categorÃ­a'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-[#64748B] mb-1">Ciudad</p>
@@ -328,22 +335,22 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Descripción */}
+            {/* DescripciÃ³n */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Descripción del puesto</h3>
-                {isEditing ? (
-                  <textarea
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">DescripciÃ³n del puesto</h3>
+                {editing ? (
+                  <RichTextEditor
                     value={formData?.description || ''}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    rows={6}
-                    placeholder="Describe las responsabilidades y características del puesto..."
-                    className="w-full rounded-lg border border-[#D1D9E6] px-4 py-3 text-sm focus:border-[#0B5CFF] focus:outline-none resize-none"
+                    onChange={(html) => handleChange('description', html)}
+                    placeholder="Describe las responsabilidades y caracteristicas del puesto..."
+                    minHeightClassName="min-h-[220px]"
                   />
                 ) : (
-                  <p className="text-sm text-[#475569] leading-relaxed whitespace-pre-wrap">
-                    {jobData.description || 'Sin descripción'}
-                  </p>
+                  <div
+                    className="prose prose-sm max-w-none text-[#475569]"
+                    dangerouslySetInnerHTML={{ __html: jobData.description || '<p>Sin descripcion</p>' }}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -353,11 +360,11 @@ export default function JobDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Requisitos</h3>
-                  {isEditing ? (
+                  {editing ? (
                     <div className="space-y-3">
                       {formData?.requirements?.map((req: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[#94A3B8]">•</span>
+                          <span className="text-[#94A3B8]">â€¢</span>
                           <input
                             type="text"
                             value={req}
@@ -391,11 +398,11 @@ export default function JobDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Beneficios</h3>
-                  {isEditing ? (
+                  {editing ? (
                     <div className="space-y-3">
                       {formData?.benefits?.map((ben: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[#94A3B8]">•</span>
+                          <span className="text-[#94A3B8]">â€¢</span>
                           <input
                             type="text"
                             value={ben}
@@ -429,7 +436,7 @@ export default function JobDetailPage() {
             </div>
 
             {/* Save button when editing */}
-            {isEditing && (
+            {editing && (
               <div className="flex justify-end">
                 <Button onClick={handleSave} disabled={updateMutation.isPending}>
                   <Save className="h-4 w-4" />
@@ -478,7 +485,7 @@ export default function JobDetailPage() {
                   </Table>
                 ) : (
                   <p className="text-sm text-[#64748B] py-4 text-center">
-                    Aún no hay postulaciones para esta vacante.
+                    AÃºn no hay postulaciones para esta vacante.
                   </p>
                 )}
                 {applicationsList.length > 10 && (
@@ -486,7 +493,7 @@ export default function JobDetailPage() {
                     href={`/candidates?jobId=${id}`}
                     className="mt-3 inline-block text-sm text-[#0B5CFF] hover:text-[#004BDD]"
                   >
-                    Ver todas las postulaciones →
+                    Ver todas las postulaciones â†’
                   </Link>
                 )}
               </CardContent>
@@ -495,10 +502,10 @@ export default function JobDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Límites del plan */}
+            {/* LÃ­mites del plan */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Límites de tu plan</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-2">LÃ­mites de tu plan</h3>
                 <p className="text-sm text-[#64748B] mb-6">Plan {planLimits?.plan?.name || 'Profesional'}</p>
                 <div className="space-y-5">
                   <div>
@@ -588,10 +595,10 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Acciones rápidas */}
+            {/* Acciones rÃ¡pidas */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Acciones rápidas</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Acciones rÃ¡pidas</h3>
                 <div className="space-y-2">
                   <Link href={`/candidates?jobId=${id}`}>
                     <Button variant="outline" className="w-full justify-start">
@@ -629,9 +636,9 @@ export default function JobDetailPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FEECEC]">
               <Trash2 className="h-6 w-6 text-[#EF4444]" />
             </div>
-            <h3 className="text-lg font-semibold text-[#0F172A]">¿Eliminar vacante?</h3>
+            <h3 className="text-lg font-semibold text-[#0F172A]">Â¿Eliminar vacante?</h3>
             <p className="mt-2 text-sm text-[#64748B]">
-              Esta acción no se puede deshacer. Se eliminarán todas las postulaciones asociadas.
+              Esta acciÃ³n no se puede deshacer. Se eliminarÃ¡n todas las postulaciones asociadas.
             </p>
             <div className="mt-6 flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
@@ -647,3 +654,5 @@ export default function JobDetailPage() {
     </div>
   );
 }
+
+

@@ -103,12 +103,23 @@ export default function SettingsPage() {
     };
   }, [companyDraft, company]);
 
+  const currentLogo = logoPreview || company?.logoUrl || company?.logo || '';
+
   const updateCompanyMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => companies.updateMe(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-me-profile'] });
       setCompanyDraft(null);
       setIsEditingCompany(false);
+    },
+  });
+
+  const uploadLogoMutation = useMutation({
+    mutationFn: (file: File) => companies.uploadMyLogo(file),
+    onSuccess: (res) => {
+      const logoUrl = res.data?.logoUrl;
+      if (logoUrl) setLogoPreview(logoUrl);
+      queryClient.invalidateQueries({ queryKey: ['company-me-profile'] });
     },
   });
 
@@ -186,22 +197,26 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                 <div className="md:col-span-4">
                   <div className="relative flex h-40 flex-col items-center justify-center rounded-xl border border-[#E6ECF5] bg-[#F8FAFC] overflow-hidden">
-                    {logoPreview ? <Image src={logoPreview} alt="Logo empresa" fill sizes="160px" className="object-cover" /> : <Building2 className="h-12 w-12 text-[#0B5CFF]" />}
+                    {currentLogo ? <Image src={currentLogo} alt="Logo empresa" fill sizes="160px" className="object-cover" /> : <Building2 className="h-12 w-12 text-[#0B5CFF]" />}
                   </div>
-                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden" onChange={(e) => {
+                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" className="hidden" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const base64 = String(reader.result ?? '');
-                      setLogoPreview(base64);
-                      setCompanyDraft({ ...(companyDraft ?? form), logo: base64 } as Partial<CompanyDraft>);
-                    };
-                    reader.readAsDataURL(file);
+                    if (file.size > 2 * 1024 * 1024) {
+                      window.alert('El logo excede 2MB.');
+                      return;
+                    }
+                    uploadLogoMutation.mutate(file);
                   }} />
-                  <Button variant="outline" className="mt-3 h-10 w-full" onClick={() => logoInputRef.current?.click()} type="button">
+                  <Button
+                    variant="outline"
+                    className="mt-3 h-10 w-full"
+                    onClick={() => logoInputRef.current?.click()}
+                    type="button"
+                    disabled={uploadLogoMutation.isPending}
+                  >
                     <Upload className="h-4 w-4" />
-                    Cambiar logo
+                    {uploadLogoMutation.isPending ? 'Subiendo...' : 'Cambiar logo'}
                   </Button>
                   <p className="mt-2 text-xs text-[#64748B]">Formatos: PNG, JPG. Tamano max: 2MB</p>
                 </div>

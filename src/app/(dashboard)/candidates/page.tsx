@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { applications, interviews, jobs, messages } from '@/lib/api';
 import { cn, formatDate, getStatusLabel } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 type ViewMode = 'table' | 'pipeline';
 
@@ -87,13 +88,17 @@ function getColumnItems(data: PipelineResponse | undefined, column: ColumnConfig
   return [];
 }
 
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  window.URL.revokeObjectURL(url);
+function formatExcelDate(value: unknown): string {
+  if (!value) return '';
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('es-NI', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 export default function CandidatesPage() {
@@ -216,30 +221,39 @@ export default function CandidatesPage() {
       const res = await applications.getExport({ ...(jobId ? { jobId } : {}), ...(status ? { status } : {}) });
       const raw = res.data;
 
-      if (raw instanceof Blob) {
-        downloadBlob(raw, 'candidatos-postulaciones.csv');
-        return;
-      }
-
-      if (typeof raw === 'string') {
-        downloadBlob(new Blob([raw], { type: 'text/csv;charset=utf-8' }), 'candidatos-postulaciones.csv');
-        return;
-      }
-
       const rows = Array.isArray(raw) ? raw : [];
-      const csv = [
-        'Candidato,Vacante,Ciudad,Estado,Fecha',
-        ...rows.map((row: Record<string, unknown>) => {
-          const candidate = (row.candidate as Record<string, unknown> | undefined)?.fullName ?? '';
-          const job = (row.job as Record<string, unknown> | undefined)?.title ?? '';
-          const city = (row.candidate as Record<string, unknown> | undefined)?.city ?? '';
-          const st = String(row.status ?? '');
-          const applied = String(row.appliedAt ?? row.createdAt ?? '');
-          return `${candidate},${job},${city},${st},${applied}`;
-        }),
-      ].join('\n');
+      const excelRows = rows.map((row: Record<string, unknown>) => {
+        const candidate = (row.candidate as Record<string, unknown> | undefined) ?? {};
+        const job = (row.job as Record<string, unknown> | undefined) ?? {};
+        const statusValue = String(row.status ?? '');
+        return {
+          Candidato: String(candidate.fullName ?? ''),
+          Vacante: String(job.title ?? ''),
+          Ciudad: String(candidate.city ?? job.city ?? 'Sin ciudad'),
+          Estado: getStatusLabel(statusValue),
+          'Fecha de postulacion': formatExcelDate(row.appliedAt ?? row.createdAt ?? ''),
+        };
+      });
 
-      downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'candidatos-postulaciones.csv');
+      const worksheet = XLSX.utils.json_to_sheet(excelRows, {
+        header: ['Candidato', 'Vacante', 'Ciudad', 'Estado', 'Fecha de postulacion'],
+      });
+
+      worksheet['!cols'] = [
+        { wch: 30 },
+        { wch: 34 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 24 },
+      ];
+      worksheet['!autofilter'] = { ref: 'A1:E1' };
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Postulaciones');
+
+      const now = new Date();
+      const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      XLSX.writeFile(workbook, `Postulaciones_${stamp}.xlsx`);
     },
   });
 

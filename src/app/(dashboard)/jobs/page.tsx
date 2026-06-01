@@ -329,7 +329,7 @@ export default function JobsPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
                               <Link
-                                href={`/jobs/${job.id}`}
+                                href={`/jobs/${job.id}?edit=1`}
                                 title="Editar"
                                 className="rounded-md border border-[#E6ECF5] p-1.5 text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#1E293B]"
                               >

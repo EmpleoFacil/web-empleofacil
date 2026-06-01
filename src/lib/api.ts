@@ -122,6 +122,13 @@ export const companies = {
   // Company (own profile)
   getMe: () => api.get('/companies/me'),
   updateMe: (data: Record<string, unknown>) => api.patch('/companies/me', data),
+  uploadMyLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/companies/me/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   getPlanLimits: () => api.get('/companies/me/plan-limits'),
   getMyUsers: () => api.get('/companies/me/users'),
   createMyUser: (data: Record<string, unknown>) => api.post('/companies/me/users', data),
