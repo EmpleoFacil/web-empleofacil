@@ -1,38 +1,46 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Building2, Users, CreditCard, Save, Plus, Edit, Trash, Upload,
-  Check, X, Crown, Briefcase, Eye, ChevronDown
-} from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Building2, Check, Edit, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { Header } from '@/components/ui/header';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { api } from '@/lib/api';
+import { companies } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-interface CompanyUser {
+type CompanyUser = {
   id: string;
   email: string;
   name?: string;
-  role: string;
-  status: string;
-}
+  role?: string;
+  companyRole?: string;
+  status?: string;
+};
 
-interface Plan {
+type Plan = {
   id: string;
   name: string;
   price: number;
-  publicationLimit: number;
-  userLimit: number;
-  visibleCandidatesLimit: number;
+  activeJobs?: number;
+  users?: number;
+  visibleCandidates?: number;
   features?: string[];
-  isActive: boolean;
-}
+};
 
-const roleLabels: Record<string, string> = {
+type CompanyDraft = {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  address: string;
+  website: string;
+  logo?: string;
+};
+
+const roleLabel: Record<string, string> = {
   company_admin: 'Administrador',
   recruiter: 'Reclutador',
   editor: 'Editor',
@@ -41,486 +49,452 @@ const roleLabels: Record<string, string> = {
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
-  const [showUserModal, setShowUserModal] = useState(false);
+  const [companyDraft, setCompanyDraft] = useState<Partial<CompanyDraft> | null>(null);
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [planModal, setPlanModal] = useState<Plan | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<CompanyUser | null>(null);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [annual, setAnnual] = useState(false);
+  const [planReference, setPlanReference] = useState('');
 
   const { data: company } = useQuery({
-    queryKey: ['company-me'],
-    queryFn: () => api.get('/companies/me').then(res => res.data),
+    queryKey: ['company-me-profile'],
+    queryFn: () => companies.getMe().then((res) => res.data),
   });
 
   const { data: users } = useQuery({
-    queryKey: ['company-users'],
-    queryFn: () => api.get('/companies/me/users').then(res => res.data),
-  });
-
-  const { data: companyPlan } = useQuery({
-    queryKey: ['company-plan'],
-    queryFn: () => api.get('/companies/billing/company-plan').then(res => res.data),
-  });
-
-  const { data: plans } = useQuery({
-    queryKey: ['company-available-plans'],
+    queryKey: ['company-users-profile'],
     queryFn: () =>
-      api.get('/companies/plans').then(res =>
-        Array.isArray(res.data) ? res.data : (res.data.items ?? [])
-      ),
+      companies.getMyUsers().then((res) => {
+        const raw = Array.isArray(res.data) ? res.data : res.data.items ?? [];
+        return raw.map((u: CompanyUser & { companyRole?: string }) => ({
+          ...u,
+          role: u.role ?? u.companyRole ?? 'viewer',
+          companyRole: u.companyRole ?? u.role ?? 'viewer',
+        }));
+      }),
   });
 
-  const [companyForm, setCompanyForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    city: '',
-    address: '',
-    website: '',
+  const { data: planLimits } = useQuery({
+    queryKey: ['company-plan-limits'],
+    queryFn: () => companies.getPlanLimits().then((res) => res.data),
   });
 
-  useEffect(() => {
-    if (company) {
-      setCompanyForm({
-        name: company.name || '',
-        email: company.email || '',
-        phone: company.phone || '',
-        city: company.city || '',
-        address: company.address || '',
-        website: company.website || '',
-      });
-    }
-  }, [company]);
+  const { data: billingPlan } = useQuery({
+    queryKey: ['company-billing-plan'],
+    queryFn: () => companies.getBillingPlan().then((res) => res.data),
+  });
+
+  const { data: availablePlans } = useQuery({
+    queryKey: ['company-available-plans'],
+    queryFn: () => companies.getAvailablePlans().then((res) => (Array.isArray(res.data) ? res.data : res.data.items ?? [])),
+  });
+
+  const form = useMemo(() => {
+    return {
+      name: companyDraft?.name ?? company?.name ?? '',
+      email: companyDraft?.email ?? company?.email ?? '',
+      phone: companyDraft?.phone ?? company?.phone ?? '',
+      city: companyDraft?.city ?? company?.city ?? '',
+      address: companyDraft?.address ?? company?.address ?? '',
+      website: companyDraft?.website ?? company?.website ?? '',
+    };
+  }, [companyDraft, company]);
 
   const updateCompanyMutation = useMutation({
-    mutationFn: (data: typeof companyForm) => api.patch('/companies/me', data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-me'] }),
-  });
-
-  const createUserMutation = useMutation({
-    mutationFn: (data: { email: string; name: string; role: string; password: string }) => 
-      api.post('/companies/me/users', data),
+    mutationFn: (payload: Record<string, unknown>) => companies.updateMe(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-users'] });
-      setShowUserModal(false);
+      queryClient.invalidateQueries({ queryKey: ['company-me-profile'] });
+      setCompanyDraft(null);
+      setIsEditingCompany(false);
     },
   });
 
-  const updateUserMutation = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; name?: string; role?: string; status?: string }) => 
-      api.patch(`/companies/me/users/${id}`, data),
+  const createUserMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => companies.createMyUser(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-users'] });
+      queryClient.invalidateQueries({ queryKey: ['company-users-profile'] });
+      setUserModalOpen(false);
+    },
+  });
+
+  const editUserMutation = useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Record<string, unknown> }) => {
+      try {
+        return await companies.updateMyUser(id, payload);
+      } catch {
+        return await companies.updateMyUser(id, { ...payload, userId: id });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-users-profile'] });
       setEditingUser(null);
     },
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/companies/me/users/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users'] }),
+    mutationFn: async (id: string) => {
+      try {
+        return await companies.deleteMyUser(id);
+      } catch {
+        return await companies.updateMyUser(id, { status: 'inactive', userId: id });
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users-profile'] }),
   });
 
-  const updatePlanMutation = useMutation({
-    mutationFn: (planId: string) => api.patch('/companies/me/plan', { planId }),
+  const changePlanMutation = useMutation({
+    mutationFn: (planId: string) => companies.updatePlan(planId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-plan'] });
-      queryClient.invalidateQueries({ queryKey: ['company-me'] });
+      queryClient.invalidateQueries({ queryKey: ['company-billing-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['company-me-profile'] });
+      setPlanModal(null);
     },
   });
 
+  const currentPlanId = String(billingPlan?.plan?.id ?? billingPlan?.id ?? '');
+  const usage = planLimits?.usage ?? billingPlan?.usage ?? billingPlan?.limits ?? {};
+  const currentPlanFromList = (availablePlans ?? []).find((p: Plan) => p.id === currentPlanId);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Header title="Empresa y plan" subtitle="Administra la informaciÃ³n de tu empresa, usuarios y tu plan de suscripciÃ³n." />
-
-      <div className="p-6">
-        <div className="flex justify-end mb-6">
-          <Button onClick={() => updateCompanyMutation.mutate(companyForm)} disabled={updateCompanyMutation.isPending}>
-            <Save className="h-4 w-4 mr-2" />
+      <Header
+        title="Empresa y plan"
+        subtitle="Administra la informacion de tu empresa, usuarios y tu plan de suscripcion."
+        actions={
+          <Button className="h-11" onClick={() => updateCompanyMutation.mutate(form)} disabled={updateCompanyMutation.isPending}>
+            <Save className="h-4 w-4" />
             {updateCompanyMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
           </Button>
-        </div>
+        }
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Company Info */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-[#64748B]" />
-                <h3 className="font-semibold text-[#0F172A]">InformaciÃ³n de la empresa</h3>
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <Card className="xl:col-span-5">
+            <CardContent className="space-y-5 p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-[#0F172A]">Informacion de la empresa</h3>
+                <button type="button" onClick={() => setIsEditingCompany((v) => !v)} className="inline-flex items-center gap-1 text-sm font-bold text-[#0B5CFF] hover:text-[#004BDD]">
+                  <Edit className="h-4 w-4" />
+                  {isEditingCompany ? 'Bloquear' : 'Editar'}
+                </button>
               </div>
-              <button className="text-[#0B5CFF] text-sm hover:underline flex items-center gap-1">
-                <Edit className="h-4 w-4" />
-                Editar
-              </button>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-start gap-6 mb-6">
-                <div className="relative">
-                  <div className="h-20 w-20 rounded-lg bg-[#EAF2FF] flex items-center justify-center">
-                    {company?.logo ? (
-                      <img src={company.logo} alt={company.name} className="h-20 w-20 rounded-lg object-cover" />
-                    ) : (
-                      <Building2 className="h-10 w-10 text-[#0B5CFF]" />
-                    )}
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                <div className="md:col-span-4">
+                  <div className="relative flex h-40 flex-col items-center justify-center rounded-xl border border-[#E6ECF5] bg-[#F8FAFC] overflow-hidden">
+                    {logoPreview ? <Image src={logoPreview} alt="Logo empresa" fill sizes="160px" className="object-cover" /> : <Building2 className="h-12 w-12 text-[#0B5CFF]" />}
                   </div>
-                  <button className="absolute -bottom-2 -right-2 p-1.5 bg-[#0B5CFF] text-white rounded-full hover:bg-blue-700">
-                    <Upload className="h-3 w-3" />
-                  </button>
+                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const base64 = String(reader.result ?? '');
+                      setLogoPreview(base64);
+                      setCompanyDraft({ ...(companyDraft ?? form), logo: base64 } as Partial<CompanyDraft>);
+                    };
+                    reader.readAsDataURL(file);
+                  }} />
+                  <Button variant="outline" className="mt-3 h-10 w-full" onClick={() => logoInputRef.current?.click()} type="button">
+                    <Upload className="h-4 w-4" />
+                    Cambiar logo
+                  </Button>
+                  <p className="mt-2 text-xs text-[#64748B]">Formatos: PNG, JPG. Tamano max: 2MB</p>
                 </div>
-                <div className="text-sm text-[#64748B]">
-                  <p>Formatos: PNG, JPG</p>
-                  <p>TamaÃ±o mÃ¡x.: 2MB</p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#334155] mb-1">Nombre de la empresa *</label>
-                  <input
-                    type="text"
-                    value={companyForm.name}
-                    onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#334155] mb-1">Correo corporativo *</label>
-                  <input
-                    type="email"
-                    value={companyForm.email}
-                    onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#334155] mb-1">TelÃ©fono *</label>
-                  <input
-                    type="tel"
-                    value={companyForm.phone}
-                    onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#334155] mb-1">Ciudad *</label>
-                  <input
-                    type="text"
-                    value={companyForm.city}
-                    onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-[#334155] mb-1">DirecciÃ³n *</label>
-                  <input
-                    type="text"
-                    value={companyForm.address}
-                    onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-[#334155] mb-1">Sitio web</label>
-                  <input
-                    type="url"
-                    value={companyForm.website}
-                    onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3 text-sm"
-                    placeholder="https://"
-                  />
+                <div className="space-y-3 md:col-span-8">
+                  <Field label="Nombre de la empresa"><input disabled={!isEditingCompany} value={form.name} onChange={(e) => setCompanyDraft({ ...(companyDraft ?? form), name: e.target.value })} placeholder="Nombre de la empresa" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm disabled:bg-[#F8FAFC]" /></Field>
+                  <Field label="Correo corporativo"><input disabled={!isEditingCompany} value={form.email} onChange={(e) => setCompanyDraft({ ...(companyDraft ?? form), email: e.target.value })} placeholder="Correo corporativo" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm disabled:bg-[#F8FAFC]" /></Field>
+                  <Field label="Teléfono"><input disabled={!isEditingCompany} value={form.phone} onChange={(e) => setCompanyDraft({ ...(companyDraft ?? form), phone: e.target.value })} placeholder="Teléfono" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm disabled:bg-[#F8FAFC]" /></Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Ciudad"><input disabled={!isEditingCompany} value={form.city} onChange={(e) => setCompanyDraft({ ...(companyDraft ?? form), city: e.target.value })} placeholder="Ciudad" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm disabled:bg-[#F8FAFC]" /></Field>
+                    <Field label="Dirección"><input disabled={!isEditingCompany} value={form.address} onChange={(e) => setCompanyDraft({ ...(companyDraft ?? form), address: e.target.value })} placeholder="Dirección" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm disabled:bg-[#F8FAFC]" /></Field>
+                  </div>
+                  <Field label="Sitio web"><input disabled={!isEditingCompany} value={form.website} onChange={(e) => setCompanyDraft({ ...(companyDraft ?? form), website: e.target.value })} placeholder="Sitio web" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm disabled:bg-[#F8FAFC]" /></Field>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Users */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-[#64748B]" />
-                <h3 className="font-semibold text-[#0F172A]">Usuarios de la empresa</h3>
-              </div>
-              <Button size="sm" onClick={() => setShowUserModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar usuario
-              </Button>
-            </CardHeader>
+          <Card className="xl:col-span-7">
             <CardContent className="p-0">
-              <table className="w-full">
-                <thead className="bg-[#F8FAFC] border-b border-[#E6ECF5]">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-[#64748B]">Usuario</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-[#64748B]">Correo</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-[#64748B]">Rol</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-[#64748B]">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EEF2F7]">
-                  {users?.map((user: CompanyUser) => (
-                    <tr key={user.id}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-[#EAF2FF] flex items-center justify-center">
-                            <span className="text-sm font-medium text-[#0B5CFF]">{(user.name || user.email).charAt(0).toUpperCase()}</span>
-                          </div>
-                          <span className="font-medium text-sm text-[#0F172A]">{user.name || 'Sin nombre'}</span>
-                          {user.status === 'active' && <span className="h-2 w-2 rounded-full bg-[#EAF8EF]0" />}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#64748B]">{user.email}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={user.role === 'company_admin' ? 'info' : 'default'}>
-                          {roleLabels[user.role] || user.role}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setEditingUser(user)} className="p-1.5 rounded hover:bg-[#F1F5F9]">
-                            <Edit className="h-4 w-4 text-[#64748B]" />
-                          </button>
-                          <button onClick={() => deleteUserMutation.mutate(user.id)} className="p-1.5 rounded hover:bg-[#F1F5F9]">
-                            <Trash className="h-4 w-4 text-[#EF4444]" />
-                          </button>
-                        </div>
-                      </td>
+              <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
+                <div>
+                  <h3 className="text-xl font-bold text-[#0F172A]">Usuarios de la empresa</h3>
+                  <p className="text-sm text-[#64748B]">Gestiona los usuarios con acceso al portal.</p>
+                </div>
+                <Button variant="outline" className="h-10" onClick={() => setUserModalOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Agregar usuario
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b border-[#EEF2F7] bg-[#F8FAFC]">
+                    <tr>
+                      {['Usuario', 'Correo', 'Rol', 'Acciones'].map((head) => (
+                        <th key={head} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#64748B]">{head}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="px-4 py-2 text-xs text-[#64748B] border-t">
-                Mostrando {users?.length || 0} de {companyPlan?.usage?.users?.max || 0} usuarios
+                  </thead>
+                  <tbody className="divide-y divide-[#EEF2F7]">
+                    {(users ?? []).map((user: CompanyUser, index: number) => (
+                      <tr key={user.id} className="hover:bg-[#F8FAFC]">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EAF2FF] text-xs font-bold text-[#0B5CFF]">
+                              {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[#0F172A]">{user.name || 'Sin nombre'} {index === 0 ? <span className="rounded-md bg-[#EAF2FF] px-1.5 py-0.5 text-[11px] text-[#0B5CFF]">Tu</span> : null}</p>
+                              <p className="text-xs text-[#64748B]">{roleLabel[user.role ?? ''] || user.role || '-'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-[#334155]">{user.email}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant={user.companyRole === 'company_admin' ? 'info' : user.companyRole === 'editor' ? 'success' : user.companyRole === 'viewer' ? 'purple' : 'default'}>
+                            {roleLabel[user.companyRole ?? ''] || user.companyRole || '-'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button type="button" className="rounded-lg border border-[#E6ECF5] p-2 text-[#0B5CFF] hover:bg-[#F8FAFC]" onClick={() => setEditingUser(user)}><Edit className="h-4 w-4" /></button>
+                            <button type="button" className="rounded-lg border border-[#FEE2E2] p-2 text-[#EF4444] hover:bg-[#FEF2F2]" onClick={() => deleteUserMutation.mutate(user.id)}><Trash2 className="h-4 w-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {!users?.length && (
+                      <tr><td colSpan={4} className="px-4 py-16 text-center text-sm text-[#64748B]">Sin usuarios registrados.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Plan Section */}
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Current Plan */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-[#0F172A]">Tu plan actual</h3>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <Card className="xl:col-span-5">
+            <CardContent className="space-y-4 p-5">
+              <h3 className="text-xl font-bold text-[#0F172A]">Tu plan actual</h3>
+              <div className="flex items-center justify-between rounded-xl border border-[#E6ECF5] p-4">
+                <div>
+                  <p className="text-lg font-bold text-[#0F172A]">{billingPlan?.plan?.name || billingPlan?.name || currentPlanFromList?.name || 'Plan'}</p>
+                  <p className="text-sm text-[#64748B]">Renovacion: {billingPlan?.renewalDate ? new Date(billingPlan.renewalDate).toLocaleDateString('es-NI') : '--'}</p>
+                </div>
                 <Badge variant="success">Activo</Badge>
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-12 w-12 rounded-lg bg-[#EAF2FF] flex items-center justify-center">
-                  <Crown className="h-6 w-6 text-[#0B5CFF]" />
-                </div>
-                <div>
-                  <p className="font-bold text-xl text-[#0F172A]">{companyPlan?.plan?.name || 'Plan BÃ¡sico'}</p>
-                  <p className="text-sm text-[#64748B]">Tu plan se renueva el {companyPlan?.renewalDate ? new Date(companyPlan.renewalDate).toLocaleDateString('es-NI') : '--'}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#E6ECF5] p-4">
+                <Metric label="Publicaciones" current={usage?.jobs?.current ?? usage?.activeJobs?.current ?? 0} max={usage?.jobs?.max ?? usage?.activeJobs?.max ?? 0} />
+                <Metric label="Usuarios" current={usage?.users?.current ?? 0} max={usage?.users?.max ?? 0} />
+                <Metric label="Visibilidad candidatos" current={usage?.candidates?.current ?? usage?.visibleCandidates?.current ?? 0} max={usage?.candidates?.max ?? usage?.visibleCandidates?.max ?? 0} />
+                <Metric label="Vacantes activas" current={usage?.activeJobs?.current ?? 0} max={usage?.activeJobs?.max ?? 0} />
               </div>
 
-              <div className="text-right mb-6">
-                <p className="text-3xl font-bold text-[#0F172A]">C$ {companyPlan?.plan?.price?.toLocaleString() || '0'}<span className="text-base font-normal text-[#64748B]">/mes</span></p>
-                <p className="text-sm text-[#64748B]">FacturaciÃ³n mensual</p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="flex items-center gap-2"><Briefcase className="h-4 w-4" /> Publicaciones</span>
-                    <span className="font-medium">{companyPlan?.usage?.jobs?.current || 0} / {companyPlan?.usage?.jobs?.max || 0}</span>
-                  </div>
-                  <div className="h-2 bg-[#E6ECF5] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#0B5CFF] rounded-full" style={{ width: `${((companyPlan?.usage?.jobs?.current || 0) / (companyPlan?.usage?.jobs?.max || 1)) * 100}%` }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Usuarios</span>
-                    <span className="font-medium">{companyPlan?.usage?.users?.current || 0} / {companyPlan?.usage?.users?.max || 0}</span>
-                  </div>
-                  <div className="h-2 bg-[#E6ECF5] rounded-full overflow-hidden">
-                    <div className="h-full bg-green-600 rounded-full" style={{ width: `${((companyPlan?.usage?.users?.current || 0) / (companyPlan?.usage?.users?.max || 1)) * 100}%` }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="flex items-center gap-2"><Eye className="h-4 w-4" /> Visibilidad de candidatos</span>
-                    <span className="font-medium">{companyPlan?.usage?.candidates?.current || 0} / {companyPlan?.usage?.candidates?.max || 0}</span>
-                  </div>
-                  <div className="h-2 bg-[#E6ECF5] rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-600 rounded-full" style={{ width: `${((companyPlan?.usage?.candidates?.current || 0) / (companyPlan?.usage?.candidates?.max || 1)) * 100}%` }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 p-3 bg-[#EAF2FF] rounded-lg">
-                <p className="text-sm text-[#004BDD]">Â¿Necesitas mÃ¡s capacidad? Actualiza tu plan para aumentar los lÃ­mites y seguir creciendo.</p>
-                <Button variant="outline" size="sm" className="mt-2 w-full">Actualizar plan</Button>
+              <div className="rounded-xl border border-[#DCEBFF] bg-[#F8FBFF] px-4 py-3">
+                <p className="text-sm font-semibold text-[#0F172A]">¿Necesitas más capacidad?</p>
+                <p className="text-xs text-[#64748B]">Actualiza tu plan para aumentar los límites y seguir creciendo.</p>
+                <Button className="mt-2 h-9" variant="outline" onClick={() => setAnnual(false)}>Actualizar plan</Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Available Plans */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <h3 className="font-semibold text-[#0F172A]">Planes disponibles</h3>
-                <div className="flex items-center bg-[#F1F5F9] rounded-lg p-1">
-                  <button
-                    onClick={() => setBillingPeriod('monthly')}
-                    className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors', billingPeriod === 'monthly' ? 'bg-white shadow text-[#0F172A]' : 'text-[#64748B]')}
-                  >
-                    Mensual
-                  </button>
-                  <button
-                    onClick={() => setBillingPeriod('annual')}
-                    className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors', billingPeriod === 'annual' ? 'bg-white shadow text-[#0F172A]' : 'text-[#64748B]')}
-                  >
-                    Anual <span className="text-[#16A34A]">-20%</span>
-                  </button>
+          <Card className="xl:col-span-7">
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-[#0F172A]">Planes disponibles</h3>
+                  <p className="text-sm text-[#64748B]">Elige el plan que mejor se adapte al crecimiento de tu empresa.</p>
                 </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {plans?.map((plan: Plan) => {
-                    const isCurrentPlan = plan.id === companyPlan?.plan?.id;
-                    const price = billingPeriod === 'annual' ? plan.price * 0.8 : plan.price;
+                <div className="flex items-center rounded-xl border border-[#E6ECF5] p-1">
+                  <button type="button" onClick={() => setAnnual(false)} className={cn('rounded-lg px-4 py-2 text-sm font-semibold', !annual ? 'bg-[#0B5CFF] text-white' : 'text-[#334155]')}>Mensual</button>
+                  <button type="button" onClick={() => setAnnual(true)} className={cn('rounded-lg px-4 py-2 text-sm font-semibold', annual ? 'bg-[#0B5CFF] text-white' : 'text-[#334155]')}>Anual -20%</button>
+                </div>
+              </div>
 
-                    return (
-                      <div
-                        key={plan.id}
-                        className={cn(
-                          'p-4 rounded-[18px] border-2 transition-all',
-                          isCurrentPlan ? 'border-[#0B5CFF] bg-[#EAF2FF]' : 'border-[#E6ECF5] hover:border-[#0B5CFF]'
-                        )}
-                      >
-                        {isCurrentPlan && (
-                          <Badge variant="info" className="mb-2">Actual</Badge>
-                        )}
-                        <h4 className="font-bold text-[#0F172A]">{plan.name}</h4>
-                        <p className="text-sm text-[#64748B] mb-3">
-                          {plan.name === 'BÃ¡sico' && 'Ideal para empresas que comienzan.'}
-                          {plan.name === 'Profesional' && 'Para empresas en crecimiento.'}
-                          {plan.name === 'Empresarial' && 'Para empresas que reclutan a gran escala.'}
-                        </p>
-
-                        <p className="text-2xl font-bold text-[#0F172A] mb-4">
-                          C$ {price.toLocaleString()}<span className="text-sm font-normal text-[#64748B]">/mes</span>
-                        </p>
-
-                        <ul className="space-y-2 text-sm text-[#475569] mb-4">
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-[#16A34A]" />
-                            {plan.publicationLimit === -1 ? 'Publicaciones ilimitadas' : `${plan.publicationLimit} publicaciones por mes`}
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-[#16A34A]" />
-                            {plan.userLimit === -1 ? 'Usuarios ilimitados' : `${plan.userLimit} usuarios`}
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-[#16A34A]" />
-                            {plan.visibleCandidatesLimit === -1 ? 'Candidatos ilimitados' : `${plan.visibleCandidatesLimit} candidatos visibles`}
-                          </li>
-                        </ul>
-
-                        {isCurrentPlan ? (
-                          <Button variant="outline" className="w-full" disabled>Plan actual</Button>
-                        ) : (
-                          <Button
-                            className="w-full"
-                            onClick={() => updatePlanMutation.mutate(plan.id)}
-                            disabled={updatePlanMutation.isPending}
-                          >
-                            Elegir plan
-                          </Button>
-                        )}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {(availablePlans ?? []).map((plan: Plan) => {
+                  const isCurrent = plan.id === currentPlanId;
+                  const price = annual ? plan.price * 0.8 : plan.price;
+                  return (
+                    <div key={plan.id} className={cn('rounded-xl border p-4', isCurrent ? 'border-[#0B5CFF] bg-[#F8FBFF]' : 'border-[#E6ECF5]')}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <h4 className="text-2xl font-bold text-[#0F172A]">{plan.name}</h4>
+                        {isCurrent ? <Badge variant="info">Actual</Badge> : null}
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                      <p className="text-4xl font-bold text-[#0F172A]">C$ {Math.round(price).toLocaleString()} <span className="text-sm font-medium text-[#64748B]">/ mes</span></p>
+                      <ul className="mt-4 space-y-2 text-sm text-[#475569]">
+                        <li className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#16A34A]" /> {(plan.activeJobs ?? (plan as Plan & { publicationLimit?: number }).publicationLimit ?? 0) > 0 ? `${plan.activeJobs ?? (plan as Plan & { publicationLimit?: number }).publicationLimit} publicaciones por mes` : 'Publicaciones ilimitadas'}</li>
+                        <li className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#16A34A]" /> {(plan.users ?? (plan as Plan & { userLimit?: number }).userLimit ?? 0) > 0 ? `${plan.users ?? (plan as Plan & { userLimit?: number }).userLimit} usuarios` : 'Usuarios ilimitados'}</li>
+                        <li className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#16A34A]" /> {(plan.visibleCandidates ?? (plan as Plan & { visibleCandidatesLimit?: number }).visibleCandidatesLimit ?? 0) > 0 ? `${plan.visibleCandidates ?? (plan as Plan & { visibleCandidatesLimit?: number }).visibleCandidatesLimit} candidatos visibles` : 'Candidatos ilimitados'}</li>
+                      </ul>
+                      <Button className="mt-4 h-10 w-full" variant={isCurrent ? 'outline' : 'primary'} disabled={isCurrent || changePlanMutation.isPending} onClick={() => setPlanModal(plan)}>{isCurrent ? 'Plan actual' : 'Elegir plan'}</Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* User Modal */}
-      {(showUserModal || editingUser) && (
+      {(userModalOpen || editingUser) && (
         <UserModal
           user={editingUser}
-          onClose={() => { setShowUserModal(false); setEditingUser(null); }}
-          onSubmit={(data) => {
-            if (editingUser) {
-              updateUserMutation.mutate({ id: editingUser.id, ...data });
-            } else {
-              createUserMutation.mutate(data as { email: string; name: string; role: string; password: string });
-            }
+          onClose={() => {
+            setUserModalOpen(false);
+            setEditingUser(null);
           }}
-          isLoading={createUserMutation.isPending || updateUserMutation.isPending}
+          onSubmit={(payload) => {
+            if (editingUser) {
+              editUserMutation.mutate({ id: editingUser.id, payload });
+              return;
+            }
+            createUserMutation.mutate(payload);
+          }}
+          loading={createUserMutation.isPending || editUserMutation.isPending}
         />
       )}
+      {planModal && (
+        <PlanPaymentModal
+          plan={planModal}
+          loading={changePlanMutation.isPending}
+          onClose={() => setPlanModal(null)}
+          onConfirm={(reference) => {
+            setPlanReference(reference);
+            changePlanMutation.mutate(planModal.id);
+          }}
+        />
+      )}
+      {planReference ? <div className="fixed bottom-4 right-4 rounded-xl bg-[#0F172A] px-4 py-2 text-xs font-semibold text-white">Referencia guardada: {planReference}</div> : null}
     </div>
   );
 }
 
-function UserModal({ user, onClose, onSubmit, isLoading }: {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Metric({ label, current, max }: { label: string; current: number; max: number }) {
+  const pct = max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0;
+  return (
+    <div>
+      <p className="text-sm font-semibold text-[#334155]">{label}</p>
+      <p className="text-2xl font-bold text-[#0F172A]">{current} / {max}</p>
+      <div className="mt-1 h-2 rounded-full bg-[#E6ECF5]">
+        <div className="h-2 rounded-full bg-[#0B5CFF]" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-1 text-xs text-[#64748B]">restantes {Math.max(0, max - current)}</p>
+    </div>
+  );
+}
+
+function UserModal({
+  user,
+  onClose,
+  onSubmit,
+  loading,
+}: {
   user: CompanyUser | null;
   onClose: () => void;
-  onSubmit: (data: { email?: string; name?: string; role?: string; password?: string; status?: string }) => void;
-  isLoading: boolean;
+  onSubmit: (payload: Record<string, unknown>) => void;
+  loading: boolean;
 }) {
-  const [form, setForm] = useState({
-    email: user?.email || '',
-    name: user?.name || '',
-    role: user?.role || 'recruiter',
-    password: '',
-    status: user?.status || 'active',
-  });
+  const [name, setName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [role, setRole] = useState(user?.companyRole ?? user?.role ?? 'recruiter');
+  const [status, setStatus] = useState(user?.status ?? 'active');
+  const [password, setPassword] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50">
-      <div className="w-full max-w-md rounded-[18px] bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-[#E6ECF5] px-6 py-4">
-          <h2 className="text-lg font-semibold text-[#0F172A]">{user ? 'Editar usuario' : 'Agregar usuario'}</h2>
-          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#475569] text-2xl">&times;</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
+          <h3 className="text-lg font-bold text-[#0F172A]">{user ? 'Editar usuario' : 'Agregar usuario'}</h3>
+          <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
         </div>
-        <div className="p-6">
-          <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
-            {!user && (
-              <div>
-                <label className="block text-sm font-medium text-[#334155] mb-1">Correo electrÃ³nico *</label>
-                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-1">Nombre</label>
-              <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#334155] mb-1">Rol *</label>
-              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
-                <option value="company_admin">Administrador</option>
-                <option value="recruiter">Reclutador</option>
-                <option value="editor">Editor</option>
-                <option value="viewer">Visor</option>
-              </select>
-            </div>
-            {!user && (
-              <div>
-                <label className="block text-sm font-medium text-[#334155] mb-1">ContraseÃ±a temporal *</label>
-                <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
-              </div>
-            )}
-            {user && (
-              <div>
-                <label className="block text-sm font-medium text-[#334155] mb-1">Estado</label>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
-                  <option value="active">Activo</option>
-                  <option value="inactive">Inactivo</option>
-                </select>
-              </div>
-            )}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : 'Guardar'}</Button>
-            </div>
-          </form>
+        <form
+          className="space-y-3 p-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const payload: Record<string, unknown> = { name, companyRole: role, status };
+            if (!user) {
+              payload.email = email;
+              payload.password = password;
+            }
+            onSubmit(payload);
+          }}
+        >
+          {!user && <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />}
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm">
+            <option value="company_admin">Administrador</option>
+            <option value="recruiter">Reclutador</option>
+            <option value="editor">Editor</option>
+            <option value="viewer">Visor</option>
+          </select>
+          {user ? (
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm">
+              <option value="active">Activo</option>
+              <option value="inactive">Inactivo</option>
+            </select>
+          ) : (
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Contrasena temporal" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PlanPaymentModal({
+  plan,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  plan: Plan;
+  onClose: () => void;
+  onConfirm: (reference: string) => void;
+  loading: boolean;
+}) {
+  const [reference, setReference] = useState('');
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
+          <h3 className="text-lg font-bold text-[#0F172A]">Cambio de plan: {plan.name}</h3>
+          <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
+        </div>
+        <div className="space-y-3 p-5 text-sm text-[#334155]">
+          <p>Realiza el pago y guarda la referencia para activar el plan.</p>
+          <div className="rounded-xl border border-[#E6ECF5] bg-[#F8FAFC] p-3">
+            <p><strong>BAC:</strong> 123-456-789</p>
+            <p><strong>LAFISE:</strong> 987-654-321</p>
+            <p><strong>BANPRO:</strong> 456-789-123</p>
+          </div>
+          <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Número de referencia / comprobante" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button disabled={loading || !reference.trim()} onClick={() => onConfirm(reference)}>{loading ? 'Procesando...' : 'Confirmar cambio'}</Button>
+          </div>
         </div>
       </div>
     </div>

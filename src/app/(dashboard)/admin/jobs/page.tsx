@@ -49,15 +49,18 @@ type JobsListResponse = {
   totalPages: number;
 };
 
-async function fetchAdminSummary() {
+type AdminSummaryMetric = { value: number; trend?: number };
+type AdminJobsSummary = {
+  active?: AdminSummaryMetric;
+  paused?: AdminSummaryMetric;
+  closed?: AdminSummaryMetric;
+  applications?: AdminSummaryMetric;
+};
+
+async function fetchAdminSummary(): Promise<AdminJobsSummary> {
   try {
     const res = await jobs.getAdminSummary();
-    return res.data as {
-      active?: { value: number; trend?: number };
-      paused?: { value: number; trend?: number };
-      closed?: { value: number; trend?: number };
-      applications?: { value: number; trend?: number };
-    };
+    return res.data as AdminJobsSummary;
   } catch {
     const [activeRes, pausedRes, closedRes, dashRes] = await Promise.all([
       jobs.getAdminJobs({ status: 'active', limit: 1, page: 1 }),
@@ -66,10 +69,10 @@ async function fetchAdminSummary() {
       dashboard.getAdmin(),
     ]);
     return {
-      active: { value: activeRes.data.total ?? 0 },
-      paused: { value: pausedRes.data.total ?? 0 },
-      closed: { value: closedRes.data.total ?? 0 },
-      applications: { value: dashRes.data?.kpis?.applications?.value ?? 0 },
+      active: { value: activeRes.data.total ?? 0, trend: undefined },
+      paused: { value: pausedRes.data.total ?? 0, trend: undefined },
+      closed: { value: closedRes.data.total ?? 0, trend: undefined },
+      applications: { value: dashRes.data?.kpis?.applications?.value ?? 0, trend: undefined },
     };
   }
 }

@@ -59,9 +59,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             {notificationsOpen && (
               <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-[14px] border border-[#E6ECF5] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                 <p className="text-sm font-bold text-[#0F172A]">Notificaciones</p>
-                <p className="mt-3 text-sm font-medium text-[#64748B]">
-                  No hay notificaciones nuevas.
-                </p>
+                <p className="mt-3 text-sm font-medium text-[#64748B]">No hay notificaciones nuevas.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -94,12 +92,12 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B5CFF] text-sm font-bold text-white">
                 {(isAdmin ? displayName : user?.companyName)?.charAt(0).toUpperCase() || 'U'}
               </div>
-              <div className="hidden min-w-[140px] sm:block text-left">
+              <div className="hidden min-w-[140px] text-left sm:block">
                 <p className="truncate text-[13px] font-semibold text-[#0F172A]">
                   {isAdmin ? displayName : user?.companyName || 'Empresa'}
                 </p>
                 <p className="truncate text-[12px] font-medium text-[#64748B]">
-                  {isAdmin ? 'Administrador' : user?.companyCity || '—'}
+                  {isAdmin ? 'Administrador' : user?.companyCity || '-'}
                 </p>
               </div>
               <ChevronDown className="h-4 w-4 text-[#94A3B8]" />

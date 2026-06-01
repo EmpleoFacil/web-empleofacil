@@ -6,20 +6,24 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(date: string | Date) {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return '--';
   return new Intl.DateTimeFormat('es-ES', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(date));
+  }).format(parsed);
 }
 
 export function formatDateTime(date: string | Date) {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return '--';
   return new Intl.DateTimeFormat('es-ES', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(date));
+  }).format(parsed);
 }
 
 export function formatCurrency(amount: number) {

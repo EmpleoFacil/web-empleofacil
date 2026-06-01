@@ -379,7 +379,7 @@ export default function CandidatesPage() {
                           {items.map((application) => (
                             <div key={application.id} className="rounded-xl border border-[#E6ECF5] bg-white p-3">
                               <div className="mb-3 flex items-start justify-between gap-2">
-                                <Link href={`/candidates/${application.candidate.id}`} className="min-w-0 flex-1">
+                                <Link href={`/candidates/${application.id}`} className="min-w-0 flex-1">
                                   <p className="truncate text-sm font-bold text-[#0F172A] hover:text-[#0B5CFF]">
                                     {application.candidate.fullName}
                                   </p>
@@ -484,7 +484,7 @@ export default function CandidatesPage() {
                     {tableItems.map((application) => (
                       <tr key={application.id} className="hover:bg-[#F8FAFC]">
                         <td className="px-5 py-4">
-                          <Link href={`/candidates/${application.candidate.id}`} className="text-sm font-bold text-[#0F172A] hover:text-[#0B5CFF]">
+                          <Link href={`/candidates/${application.id}`} className="text-sm font-bold text-[#0F172A] hover:text-[#0B5CFF]">
                             {application.candidate.fullName}
                           </Link>
                           <p className="mt-0.5 text-xs text-[#64748B]">{application.candidate.city || 'Sin ciudad'}</p>

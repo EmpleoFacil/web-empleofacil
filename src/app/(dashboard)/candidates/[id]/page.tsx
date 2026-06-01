@@ -1,360 +1,463 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft, Calendar, Mail, MessageSquare, FileText, Clock, Star,
-  MapPin, Phone, Briefcase, GraduationCap, DollarSign, CheckCircle,
-  ChevronDown, Send, Plus, Download, MoreHorizontal, Eye
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Calendar,
+  ChevronDown,
+  Ellipsis,
+  History,
+  Mail,
+  MapPin,
+  Medal,
+  NotebookPen,
+  Phone,
+  Plus,
+  Send,
+  Star,
+  UserRound,
+  Video,
+  Download,
+  Eye,
+  FileText,
+} from 'lucide-react';
 import { Header } from '@/components/ui/header';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
-import { api } from '@/lib/api';
-import { formatDate, getStatusLabel, cn } from '@/lib/utils';
+import { applications, candidates, documents, interviews, messages } from '@/lib/api';
+import { cn, formatDate, formatDateTime, getStatusLabel } from '@/lib/utils';
 
-type TabType = 'resumen' | 'documentos' | 'historial' | 'entrevistas' | 'evaluaciones';
+type Tab = 'resumen' | 'documentos' | 'historial' | 'entrevistas' | 'evaluaciones';
 
 const statusOptions = [
-  { value: 'new', label: 'Nuevo', color: 'text-[#0B5CFF]' },
-  { value: 'reviewing', label: 'En revisión', color: 'text-[#F59E0B]' },
-  { value: 'shortlisted', label: 'Preseleccionado', color: 'text-[#A855F7]' },
-  { value: 'interview', label: 'Entrevista', color: 'text-[#4F46E5]' },
-  { value: 'hired', label: 'Contratado', color: 'text-[#16A34A]' },
-  { value: 'rejected', label: 'Descartado', color: 'text-[#EF4444]' },
+  { value: 'applied', label: 'Nuevo' },
+  { value: 'reviewing', label: 'En revision' },
+  { value: 'preselected', label: 'Preseleccionado' },
+  { value: 'interview_scheduled', label: 'Entrevista' },
+  { value: 'hired', label: 'Contratado' },
+  { value: 'rejected', label: 'Descartado' },
 ];
+
+function labelizeDocumentType(value: string): string {
+  const map: Record<string, string> = {
+    police_record: 'Récord de policía',
+    cv: 'Currículum vitae',
+    resume: 'Currículum vitae',
+    id_front: 'Cédula frontal',
+    id_back: 'Cédula reverso',
+    certificate: 'Certificado',
+    diploma: 'Diploma',
+  };
+  if (map[value]) return map[value];
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export default function CandidateDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const applicationId = params.id as string;
+  const applicationId = String(params.id ?? '');
 
-  const [activeTab, setActiveTab] = useState<TabType>('resumen');
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
-  const [showInterviewModal, setShowInterviewModal] = useState(false);
-  const [showMessageModal, setShowMessageModal] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('resumen');
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteMenuId, setNoteMenuId] = useState<string | null>(null);
+  const [prefillNote, setPrefillNote] = useState('');
 
-  const { data: application, isLoading } = useQuery({
-    queryKey: ['application', applicationId],
-    queryFn: () => api.get(`/applications/${applicationId}`).then(res => res.data),
+  const { data: application, isPending: applicationLoading } = useQuery({
+    queryKey: ['candidate-application-detail', applicationId],
+    queryFn: () => applications.getById(applicationId).then((res) => res.data as Record<string, unknown>),
+    enabled: !!applicationId,
   });
 
-  const { data: documents } = useQuery({
-    queryKey: ['candidate-documents', application?.candidateId],
-    queryFn: () => api.get(`/documents/candidate/${application?.candidateId}`).then(res => res.data),
-    enabled: !!application?.candidateId,
+  const candidateId =
+    String((application?.candidateId as string | undefined) ?? (application?.candidate as { id?: string } | undefined)?.id ?? '');
+
+  const { data: candidate, isPending: candidateLoading } = useQuery({
+    queryKey: ['candidate-profile-detail', candidateId],
+    queryFn: () => candidates.getById(candidateId).then((res) => res.data as Record<string, unknown>),
+    enabled: !!candidateId,
   });
 
-  const { data: messages } = useQuery({
-    queryKey: ['candidate-messages', application?.candidateId],
-    queryFn: () => api.get('/messages/company', { params: { candidateId: application?.candidateId } }).then(res => res.data),
-    enabled: !!application?.candidateId,
+  const { data: docs } = useQuery({
+    queryKey: ['candidate-docs', candidateId],
+    queryFn: () => documents.getByCandidate(candidateId).then((res) => res.data as Array<Record<string, unknown>>),
+    enabled: !!candidateId,
+  });
+
+  const { data: candidateMessages } = useQuery({
+    queryKey: ['candidate-messages', candidateId],
+    queryFn: () => messages.getByCompany({ candidateId, limit: 8, page: 1 }).then((res) => res.data),
+    enabled: !!candidateId,
+  });
+
+  const { data: candidateInterviews } = useQuery({
+    queryKey: ['candidate-interviews', candidateId, applicationId],
+    queryFn: () => interviews.getByCompany().then((res) => res.data),
+    enabled: !!candidateId,
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: (status: string) => api.patch(`/applications/${applicationId}/status`, { status }),
+    mutationFn: (status: string) => applications.updateStatus(applicationId, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
-      setShowStatusMenu(false);
+      queryClient.invalidateQueries({ queryKey: ['candidate-application-detail', applicationId] });
+      queryClient.invalidateQueries({ queryKey: ['applications-company-pipeline'] });
+      queryClient.invalidateQueries({ queryKey: ['applications-company-table'] });
+      setStatusMenuOpen(false);
     },
   });
 
   const createInterviewMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => {
-      const { modality, ...rest } = data as Record<string, unknown>;
-      return api.post('/interviews', { ...rest, type: modality });
-    },
+    mutationFn: (payload: Record<string, unknown>) => interviews.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
-      setShowInterviewModal(false);
+      queryClient.invalidateQueries({ queryKey: ['candidate-interviews', candidateId, applicationId] });
+      setScheduleOpen(false);
     },
   });
 
-  const sendMessageMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => api.post('/messages', data),
+  const createMessageMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => messages.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidate-messages'] });
-      setShowMessageModal(false);
+      queryClient.invalidateQueries({ queryKey: ['candidate-messages', candidateId] });
+      setMessageOpen(false);
     },
   });
 
   const addNoteMutation = useMutation({
-    mutationFn: (content: string) => api.post(`/applications/${applicationId}/notes`, { content }),
+    mutationFn: (content: string) => applications.addNote(applicationId, content),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['application', applicationId] });
-      setShowNoteModal(false);
+      queryClient.invalidateQueries({ queryKey: ['candidate-application-detail', applicationId] });
+      setNoteOpen(false);
     },
   });
 
-  if (isLoading) {
+  const notes = useMemo(() => {
+    const arr = (application?.notes as Array<Record<string, unknown>> | undefined) ?? [];
+    return Array.isArray(arr) ? arr : [];
+  }, [application]);
+
+  const appTimeline = useMemo(() => {
+    const arr = (application?.timeline as Array<Record<string, unknown>> | undefined) ?? [];
+    if (Array.isArray(arr) && arr.length) return arr;
+    return [
+      {
+        status: 'Postulacion recibida',
+        description: 'El candidato aplico a la vacante.',
+        date: (application?.appliedAt as string | undefined) ?? (application?.createdAt as string | undefined),
+        actor: 'Sistema',
+      },
+    ];
+  }, [application]);
+
+  const availabilityLabel = useMemo(() => {
+    const raw = String(candidate?.availability ?? '').toLowerCase();
+    if (raw === 'immediate') return 'Inmediata';
+    if (raw === 'two_weeks') return 'En dos semanas';
+    if (raw === 'one_month') return 'En un mes';
+    if (raw === 'part_time') return 'Medio tiempo';
+    return String(candidate?.availability ?? 'N/A');
+  }, [candidate?.availability]);
+
+  const messagesItems = useMemo(() => {
+    if (Array.isArray(candidateMessages)) return candidateMessages;
+    if (Array.isArray((candidateMessages as Record<string, unknown> | undefined)?.items)) {
+      return (candidateMessages as { items: Array<Record<string, unknown>> }).items;
+    }
+    return [] as Array<Record<string, unknown>>;
+  }, [candidateMessages]);
+
+  const interviewsItems = useMemo(() => {
+    const source = Array.isArray(candidateInterviews)
+      ? candidateInterviews
+      : Array.isArray((candidateInterviews as Record<string, unknown> | undefined)?.items)
+      ? (candidateInterviews as { items: Array<Record<string, unknown>> }).items
+      : [];
+
+    return source.filter((interview) => {
+      const iCandidateId =
+        String((interview.candidate as { id?: string } | undefined)?.id ?? '') ||
+        String(interview.candidateId ?? '');
+      const iApplicationId =
+        String((interview.application as { id?: string } | undefined)?.id ?? '') ||
+        String(interview.applicationId ?? '');
+
+      const candidateMatch = candidateId ? iCandidateId === candidateId : true;
+      const applicationMatch = applicationId ? iApplicationId === applicationId : true;
+      return candidateMatch || applicationMatch;
+    });
+  }, [candidateInterviews, candidateId, applicationId]);
+
+  if (applicationLoading || candidateLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0B5CFF] border-t-transparent" />
       </div>
     );
   }
 
-  const candidate = application?.candidate;
-  const job = application?.job;
+  if (!application) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] p-8">
+        <p className="text-sm font-semibold text-[#64748B]">No se encontro la postulacion.</p>
+      </div>
+    );
+  }
 
-  const tabs: { id: TabType; label: string }[] = [
-    { id: 'resumen', label: 'Resumen' },
-    { id: 'documentos', label: 'Documentos' },
-    { id: 'historial', label: 'Historial' },
-    { id: 'entrevistas', label: 'Entrevistas' },
-    { id: 'evaluaciones', label: 'Evaluaciones' },
+  const candidateName = String((candidate?.fullName as string | undefined) ?? ((application.candidate as { fullName?: string } | undefined)?.fullName ?? 'Candidato'));
+  const candidateEmail = String((candidate?.user as { email?: string } | undefined)?.email ?? (candidate?.email as string | undefined) ?? '');
+  const candidatePhone = String((candidate?.phone as string | undefined) ?? '');
+  const candidateCity = String((candidate?.city as string | undefined) ?? ((application.candidate as { city?: string } | undefined)?.city ?? ''));
+  const jobTitle = String((application?.job as { title?: string } | undefined)?.title ?? 'Vacante');
+  const applicationStatus = String((application?.status as string | undefined) ?? 'applied');
+
+  const tabs: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { id: 'resumen', label: 'Resumen', icon: UserRound },
+    { id: 'documentos', label: 'Documentos', icon: FileText },
+    { id: 'historial', label: 'Historial', icon: History },
+    { id: 'entrevistas', label: 'Entrevistas', icon: Video },
+    { id: 'evaluaciones', label: 'Evaluaciones', icon: Medal },
   ];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Header title="Detalle de candidato" subtitle="Revisa el perfil completo y la postulación del candidato." />
-
-      <div className="p-6">
-        {/* Breadcrumb & Actions */}
-        <div className="flex items-center justify-between mb-6">
-          <Link href="/candidates" className="inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#334155]">
-            <ArrowLeft className="h-4 w-4" />
-            Candidatos
-          </Link>
-
-          <div className="flex items-center gap-3">
+      <Header
+        title="Detalle de candidato"
+        subtitle="Revisa el perfil completo y la postulacion del candidato."
+        actions={
+          <>
             <div className="relative">
-              <Button variant="outline" onClick={() => setShowStatusMenu(!showStatusMenu)}>
+              <Button variant="outline" className="h-11" onClick={() => setStatusMenuOpen((prev) => !prev)}>
                 Cambiar estado
-                <ChevronDown className="h-4 w-4 ml-2" />
+                <ChevronDown className="h-4 w-4" />
               </Button>
-              {showStatusMenu && (
-                <div className="absolute right-0 top-12 z-10 w-48 rounded-lg border border-[#E6ECF5] bg-white shadow-lg py-1">
-                  {statusOptions.map(opt => (
+              {statusMenuOpen && (
+                <div className="absolute right-0 top-12 z-40 w-52 rounded-xl border border-[#E6ECF5] bg-white py-1 shadow-lg">
+                  {statusOptions.map((option) => (
                     <button
-                      key={opt.value}
-                      onClick={() => updateStatusMutation.mutate(opt.value)}
-                      className={cn('flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[#F1F5F9]', opt.color)}
+                      key={option.value}
+                      type="button"
+                      onClick={() => updateStatusMutation.mutate(option.value)}
+                      className="block w-full px-3 py-2 text-left text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
                     >
-                      {opt.label}
+                      {option.label}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <Button onClick={() => setShowInterviewModal(true)}>
-              <Calendar className="h-4 w-4 mr-2" />
+            <Button className="h-11" onClick={() => setScheduleOpen(true)}>
+              <Calendar className="h-4 w-4" />
               Programar entrevista
             </Button>
-            <Button variant="outline" onClick={() => setShowMessageModal(true)}>
-              <Send className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="h-11" onClick={() => setMessageOpen(true)}>
+              <Send className="h-4 w-4" />
               Enviar mensaje
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* Candidate Header */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-6">
-              <div className="h-20 w-20 rounded-full bg-[#EAF2FF] flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl font-bold text-[#0B5CFF]">{candidate?.fullName?.charAt(0)}</span>
-              </div>
+      <div className="space-y-6 p-6">
+        <p className="text-sm font-semibold text-[#64748B]">
+          <Link href="/candidates" className="text-[#0B5CFF] hover:text-[#004BDD]">
+            Candidatos
+          </Link>{' '}
+          › Detalle de candidato
+        </p>
 
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold text-[#0F172A]">{candidate?.fullName}</h2>
-                  <Badge variant={getStatusBadgeVariant(application?.status)}>
-                    {getStatusLabel(application?.status)}
-                  </Badge>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <div className="xl:col-span-8 space-y-6">
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex flex-wrap items-start gap-5">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#EAF2FF] text-3xl font-bold text-[#0B5CFF]">
+                    {candidateName.charAt(0).toUpperCase()}
+                  </div>
+
+                  <div className="min-w-[280px] flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <h2 className="text-[40px] font-bold leading-10 text-[#0F172A]">{candidateName}</h2>
+                      <Badge variant={getStatusBadgeVariant(applicationStatus)}>{getStatusLabel(applicationStatus)}</Badge>
+                    </div>
+                    <p className="text-lg font-medium text-[#475569]">Postulo para: {jobTitle}</p>
+                    <p className="text-sm text-[#64748B]">Postulado el: {formatDate(String(application.appliedAt ?? application.createdAt ?? ''))}</p>
+
+                    <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-[#475569] md:grid-cols-3">
+                      <p className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{candidateCity || 'Sin ciudad'}</p>
+                      <p className="inline-flex items-center gap-1"><Phone className="h-4 w-4" />{candidatePhone || 'Sin telefono'}</p>
+                      <p className="inline-flex items-center gap-1"><Mail className="h-4 w-4" />{candidateEmail || 'Sin correo'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid min-w-[220px] grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <span className="text-[#64748B]">Experiencia</span>
+                    <span className="font-semibold text-[#0F172A]">{String(candidate?.yearsExperience ?? 0)} años</span>
+                    <span className="text-[#64748B]">Educacion</span>
+                    <span className="font-semibold text-[#0F172A]">{String(candidate?.educationLevel ?? 'N/A')}</span>
+                    <span className="text-[#64748B]">Salario esperado</span>
+                    <span className="font-semibold text-[#0F172A]">{String(candidate?.expectedSalary ?? 'N/A')}</span>
+                    <span className="text-[#64748B]">Disponibilidad</span>
+                    <span className="font-semibold text-[#0F172A]">{availabilityLabel}</span>
+                  </div>
                 </div>
-                <p className="text-[#475569] mb-1">Postuló para: <span className="font-medium">{job?.title}</span></p>
-                <p className="text-sm text-[#64748B]">Postulado el: {formatDate(application?.appliedAt)}</p>
+              </CardContent>
+            </Card>
 
-                <div className="flex items-center gap-6 mt-4 text-sm text-[#64748B]">
-                  {candidate?.city && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      {candidate.city}
-                    </span>
-                  )}
-                  {candidate?.phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
-                      {candidate.phone}
-                    </span>
-                  )}
-                  {candidate?.user?.email && (
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-4 w-4" />
-                      {candidate.user.email}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="text-right space-y-2">
-                <div className="text-sm text-[#64748B]">Experiencia</div>
-                <div className="font-semibold">{candidate?.yearsExperience || 0} años</div>
-                <div className="text-sm text-[#64748B] mt-4">Educación</div>
-                <div className="font-semibold">{candidate?.educationLevel || 'N/A'}</div>
-                <div className="text-sm text-[#64748B] mt-4">Salario esperado</div>
-                <div className="font-semibold">C$ {candidate?.expectedSalary?.toLocaleString() || 'N/A'}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabs */}
-        <div className="border-b border-[#E6ECF5] mb-6">
-          <nav className="flex gap-8">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'pb-4 text-sm font-medium border-b-2 transition-colors',
-                  activeTab === tab.id
-                    ? 'border-blue-600 text-[#0B5CFF]'
-                    : 'border-transparent text-[#64748B] hover:text-[#334155]'
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {activeTab === 'resumen' && (
-              <>
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Sobre {candidate?.fullName?.split(' ')[0]}</h3>
-                    <p className="text-[#475569]">{candidate?.bio || 'Sin descripción disponible.'}</p>
-
-                    {candidate?.skills && candidate.skills.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {candidate.skills.map((skill: string, i: number) => (
-                          <span key={i} className="px-3 py-1 bg-[#EAF2FF] text-[#0B5CFF] rounded-full text-sm">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
+            <div className="border-b border-[#E6ECF5]">
+              <nav className="flex flex-wrap gap-8">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      'border-b-2 pb-3 text-sm font-semibold transition-colors',
+                      activeTab === tab.id ? 'border-[#0B5CFF] text-[#0B5CFF]' : 'border-transparent text-[#64748B] hover:text-[#334155]'
                     )}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <tab.icon className="h-4 w-4" />
+                      {tab.label}
+                    </span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {activeTab === 'resumen' && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardContent className="p-5">
+                    <h3 className="mb-3 text-lg font-bold text-[#0F172A]">Sobre {candidateName.split(' ')[0]}</h3>
+                    <p className="text-sm text-[#475569]">{String(candidate?.bio ?? 'Sin descripcion disponible.')}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {((candidate?.skills as string[] | undefined) ?? []).slice(0, 6).map((skill) => (
+                        <span key={skill} className="rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-semibold text-[#0B5CFF]">{skill}</span>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-[#0F172A]">Documentos</h3>
-                      <Link href="#" className="text-sm text-[#0B5CFF] hover:underline">Ver todos</Link>
+                  <CardContent className="p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-[#0F172A]">Documentos</h3>
                     </div>
-                    <div className="space-y-3">
-                      {documents?.slice(0, 3).map((doc: { id: string; type: string; status: string; uploadedAt: string }) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-[#F8FAFC] rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-[#94A3B8]" />
-                            <div>
-                              <p className="font-medium text-[#0F172A]">{doc.type}</p>
-                              <p className="text-xs text-[#64748B]">Subido el {formatDate(doc.uploadedAt)}</p>
-                            </div>
+                    <div className="space-y-2">
+                      {(docs ?? []).slice(0, 3).map((doc) => (
+                        <div key={String(doc.id)} className="flex items-center justify-between rounded-lg border border-[#E6ECF5] px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#0F172A]">{labelizeDocumentType(String(doc.type ?? 'documento'))}</p>
+                            <p className="text-xs text-[#64748B]">Subido el {formatDate(String(doc.uploadedAt ?? doc.createdAt ?? ''))}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
-                              {doc.status === 'approved' ? 'Verificado' : doc.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
-                            </Badge>
-                            <button className="p-1 hover:bg-[#E6ECF5] rounded"><Eye className="h-4 w-4 text-[#64748B]" /></button>
-                            <button className="p-1 hover:bg-[#E6ECF5] rounded"><Download className="h-4 w-4 text-[#64748B]" /></button>
+                            <Badge variant="success">Verificado</Badge>
+                            <button type="button" className="rounded border border-[#E6ECF5] p-1"><Eye className="h-4 w-4 text-[#64748B]" /></button>
+                            <button type="button" className="rounded border border-[#E6ECF5] p-1"><Download className="h-4 w-4 text-[#64748B]" /></button>
                           </div>
                         </div>
-                      )) || <p className="text-[#64748B] text-sm">Sin documentos</p>}
+                      ))}
+                      {!docs?.length && <p className="text-sm text-[#64748B]">Sin documentos.</p>}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Historial de postulación</h3>
-                    <div className="space-y-4">
-                      {application?.timeline?.map((event: { status: string; date: string; user?: string; description?: string }, i: number) => (
-                        <div key={i} className="flex gap-4">
-                          <div className="flex flex-col items-center">
-                            <div className={cn(
-                              'h-3 w-3 rounded-full',
-                              i === 0 ? 'bg-green-500' : 'bg-gray-300'
-                            )} />
-                            {i < (application.timeline?.length || 0) - 1 && <div className="w-0.5 flex-1 bg-gray-200" />}
-                          </div>
-                          <div className="pb-4">
-                            <p className="font-medium text-[#0F172A]">{event.status}</p>
-                            <p className="text-sm text-[#64748B]">{event.description}</p>
-                            <p className="text-xs text-[#94A3B8] mt-1">{formatDate(event.date)} - {event.user}</p>
-                          </div>
+                <Card className="lg:col-span-2">
+                  <CardContent className="space-y-4 p-5">
+                    <h3 className="text-lg font-bold text-[#0F172A]">Historial de postulación</h3>
+                    {appTimeline.map((item, index) => (
+                      <div key={`resumen-${String(item.date)}-${index}`} className="flex gap-3">
+                        <div className="flex w-8 shrink-0 justify-center">
+                          {index === 0 ? (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#16A34A] text-white"><Star className="h-4 w-4" /></div>
+                          ) : index === 1 ? (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B5CFF] text-white"><UserRound className="h-4 w-4" /></div>
+                          ) : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#64748B] text-white"><Send className="h-4 w-4" /></div>
+                          )}
                         </div>
-                      )) || (
-                        <div className="flex gap-4">
-                          <div className="h-3 w-3 rounded-full bg-green-500" />
-                          <div>
-                            <p className="font-medium text-[#0F172A]">Postulación recibida</p>
-                            <p className="text-xs text-[#94A3B8]">{formatDate(application?.appliedAt)}</p>
-                          </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#0F172A]">{String(item.status ?? 'Evento')}</p>
+                          <p className="text-sm text-[#475569]">{String(item.description ?? '')}</p>
+                          <p className="text-xs text-[#64748B]">{formatDateTime(String(item.date ?? ''))} - {String(item.actor ?? item.user ?? 'Sistema')}</p>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
-              </>
+              </div>
             )}
 
             {activeTab === 'documentos' && (
               <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Documentos del candidato</h3>
-                  <div className="space-y-3">
-                    {documents?.map((doc: { id: string; type: string; status: string; uploadedAt: string; fileUrl?: string }) => (
-                      <div key={doc.id} className="flex items-center justify-between p-4 border border-[#E6ECF5] rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-6 w-6 text-[#94A3B8]" />
-                          <div>
-                            <p className="font-medium text-[#0F172A]">{doc.type}</p>
-                            <p className="text-sm text-[#64748B]">Subido el {formatDate(doc.uploadedAt)}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
-                            {doc.status === 'approved' ? 'Verificado' : doc.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
-                          </Badge>
-                          <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4" />
-                          </Button>
+                <CardContent className="space-y-3 p-5">
+                  {(docs ?? []).map((doc) => (
+                    <div key={String(doc.id)} className="flex items-center justify-between rounded-xl border border-[#E6ECF5] p-3">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-[#94A3B8]" />
+                        <div>
+                          <p className="text-sm font-semibold text-[#0F172A]">{labelizeDocumentType(String(doc.type ?? 'documento'))}</p>
+                          <p className="text-xs text-[#64748B]">{formatDate(String(doc.uploadedAt ?? doc.createdAt ?? ''))}</p>
                         </div>
                       </div>
-                    )) || <p className="text-[#64748B]">No hay documentos disponibles</p>}
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="success">Verificado</Badge>
+                        <button type="button" className="rounded border border-[#E6ECF5] p-1"><Download className="h-4 w-4 text-[#64748B]" /></button>
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
 
             {activeTab === 'historial' && (
               <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Historial completo</h3>
-                  <p className="text-[#64748B]">Historial de cambios y actividad del candidato.</p>
+                <CardContent className="space-y-4 p-5">
+                  <h3 className="text-lg font-bold text-[#0F172A]">Historial de postulacion</h3>
+                  {appTimeline.map((item, index) => (
+                    <div key={`${String(item.date)}-${index}`} className="flex gap-3">
+                      <div className="flex w-8 shrink-0 justify-center">
+                        {index === 0 ? (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#16A34A] text-white"><Star className="h-4 w-4" /></div>
+                        ) : index === 1 ? (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B5CFF] text-white"><UserRound className="h-4 w-4" /></div>
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#64748B] text-white"><Send className="h-4 w-4" /></div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-[#0F172A]">{String(item.status ?? 'Evento')}</p>
+                        <p className="text-sm text-[#475569]">{String(item.description ?? '')}</p>
+                        <p className="text-xs text-[#64748B]">{formatDateTime(String(item.date ?? ''))} - {String(item.actor ?? item.user ?? 'Sistema')}</p>
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
 
             {activeTab === 'entrevistas' && (
               <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Entrevistas programadas</h3>
-                  <p className="text-[#64748B]">No hay entrevistas programadas para este candidato.</p>
-                  <Button className="mt-4" onClick={() => setShowInterviewModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
+                <CardContent className="space-y-3 p-5">
+                  <h3 className="text-lg font-bold text-[#0F172A]">Entrevistas</h3>
+                  {interviewsItems.length ? (
+                    interviewsItems.map((interview) => (
+                      <div key={String(interview.id)} className="rounded-xl border border-[#E6ECF5] p-3">
+                        <p className="text-sm font-semibold text-[#0F172A]">{formatDateTime(String(interview.date ?? ''))}</p>
+                        <p className="text-xs text-[#64748B]">Estado: {String(interview.status ?? '-')}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[#64748B]">No hay entrevistas registradas.</p>
+                  )}
+                  <Button className="h-10" onClick={() => setScheduleOpen(true)}>
+                    <Plus className="h-4 w-4" />
                     Programar entrevista
                   </Button>
                 </CardContent>
@@ -363,55 +466,117 @@ export default function CandidateDetailPage() {
 
             {activeTab === 'evaluaciones' && (
               <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Evaluaciones</h3>
-                  <p className="text-[#64748B]">No hay evaluaciones registradas.</p>
-                </CardContent>
+                <CardContent className="p-5 text-sm text-[#64748B]">No hay evaluaciones registradas.</CardContent>
               </Card>
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="xl:col-span-4 space-y-6">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-[#0F172A]">Notas internas</h3>
-                  <button onClick={() => setShowNoteModal(true)} className="text-[#0B5CFF] text-sm hover:underline flex items-center gap-1">
+              <CardContent className="p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-[#0F172A]">Notas internas</h3>
+                  <Button variant="outline" size="sm" onClick={() => { setPrefillNote(''); setNoteOpen(true); }}>
                     <Plus className="h-4 w-4" />
                     Añadir nota
-                  </button>
+                  </Button>
                 </div>
-                <div className="space-y-3">
-                  {application?.notes?.map((note: { id: string; content: string; createdAt: string; author?: { name?: string } }) => (
-                    <div key={note.id} className="p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r">
-                      <p className="text-sm text-[#334155]">{note.content}</p>
-                      <p className="text-xs text-[#64748B] mt-1">{note.author?.name} - {formatDate(note.createdAt)}</p>
-                    </div>
-                  )) || <p className="text-sm text-[#64748B]">Sin notas</p>}
-                </div>
+
+                {notes.length ? (
+                  <div className="space-y-3">
+                    {notes.map((note) => (
+                      <div key={String(note.id)} className="rounded-xl border border-[#F3E8B5] bg-[#FFFBEA] p-3">
+                        <p className="inline-flex items-start gap-2 text-sm text-[#334155]">
+                          <NotebookPen className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" />
+                          {String(note.content ?? note.note ?? note.text ?? note.message ?? 'Sin contenido')}
+                        </p>
+                        <div className="mt-2 flex items-center justify-between text-xs text-[#64748B]">
+                          <p>
+                            {(() => {
+                              const authorCandidates = [
+                                (note.author as { name?: string } | undefined)?.name,
+                                (note.createdBy as { name?: string; email?: string } | undefined)?.name,
+                                (note.createdBy as { name?: string; email?: string } | undefined)?.email,
+                                (note.user as { name?: string; email?: string } | undefined)?.name,
+                                (note.user as { name?: string; email?: string } | undefined)?.email,
+                                String(note.authorName ?? note.createdByName ?? ''),
+                              ];
+                              const author = authorCandidates.find((v) => String(v ?? '').trim()) || 'Equipo';
+                              return author;
+                            })()}{' '}
+                            - {formatDateTime(String(note.createdAt ?? note.created_at ?? note.date ?? ''))}
+                          </p>
+                          <button type="button" className="rounded border border-[#E6ECF5] p-1 text-[#64748B]" onClick={() => setNoteMenuId(noteMenuId === String(note.id) ? null : String(note.id))}>
+                            <Ellipsis className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {noteMenuId === String(note.id) && (
+                          <div className="mt-2 rounded-lg border border-[#E6ECF5] bg-white py-1">
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-xs font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                              onClick={() => {
+                                setPrefillNote(String(note.content ?? note.note ?? note.text ?? note.message ?? ''));
+                                setNoteOpen(true);
+                                setNoteMenuId(null);
+                              }}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-xs font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                              onClick={() => {
+                                addNoteMutation.mutate(String(note.content ?? note.note ?? note.text ?? note.message ?? ''));
+                                setNoteMenuId(null);
+                              }}
+                            >
+                              Duplicar
+                            </button>
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-xs font-medium text-[#EF4444] hover:bg-[#FEF2F2]"
+                              onClick={() => {
+                                window.alert('Eliminar nota no está disponible en el backend actual.');
+                                setNoteMenuId(null);
+                              }}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#64748B]">Sin notas internas.</p>
+                )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-[#0F172A]">Mensajes recientes</h3>
-                  <Link href="/messages" className="text-[#0B5CFF] text-sm hover:underline">Ver todos</Link>
+              <CardContent className="p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-[#0F172A]">Mensajes recientes</h3>
+                  <Link href="/messages" className="text-sm font-bold text-[#0B5CFF] hover:text-[#004BDD]">Ver todos</Link>
                 </div>
+
                 <div className="space-y-3">
-                  {messages?.slice(0, 3).map((msg: { id: string; title: string; body: string; sentAt: string; status: string }) => (
-                    <div key={msg.id} className="p-3 bg-[#F8FAFC] rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-sm text-[#0F172A]">{msg.title}</p>
-                        <Badge variant={msg.status === 'responded' ? 'success' : 'default'} className="text-xs">
-                          {msg.status === 'responded' ? 'Respondido' : 'Enviado'}
-                        </Badge>
+                  {messagesItems.slice(0, 4).map((msg) => (
+                    <div key={String(msg.id)} className="rounded-xl border border-[#E6ECF5] p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0B5CFF] text-xs font-bold text-white">
+                          {String((msg.sender as { name?: string } | undefined)?.name ?? 'M').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-[#0F172A]">{String(msg.title ?? msg.subject ?? 'Mensaje')}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-[#64748B]">{String(msg.body ?? '')}</p>
+                          <p className="mt-2 text-xs text-[#94A3B8]">{formatDateTime(String(msg.sentAt ?? msg.createdAt ?? ''))}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-[#64748B] line-clamp-2">{msg.body}</p>
-                      <p className="text-xs text-[#94A3B8] mt-1">{formatDate(msg.sentAt)}</p>
                     </div>
-                  )) || <p className="text-sm text-[#64748B]">Sin mensajes</p>}
+                  ))}
+                  {!messagesItems.length && <p className="text-sm text-[#64748B]">Sin mensajes recientes.</p>}
                 </div>
               </CardContent>
             </Card>
@@ -419,126 +584,162 @@ export default function CandidateDetailPage() {
         </div>
       </div>
 
-      {/* Interview Modal */}
-      {showInterviewModal && (
-        <Modal title="Programar entrevista" onClose={() => setShowInterviewModal(false)}>
-          <InterviewForm
-            applicationId={applicationId}
-            onSubmit={(data) => createInterviewMutation.mutate({ ...data, applicationId })}
-            isLoading={createInterviewMutation.isPending}
-          />
-        </Modal>
+      {scheduleOpen && (
+        <ScheduleInterviewModal
+          applicationId={applicationId}
+          candidateId={candidateId}
+          jobId={String((application.job as { id?: string } | undefined)?.id ?? '')}
+          onClose={() => setScheduleOpen(false)}
+          onSubmit={(payload) => createInterviewMutation.mutate(payload)}
+          loading={createInterviewMutation.isPending}
+        />
       )}
 
-      {/* Message Modal */}
-      {showMessageModal && (
-        <Modal title="Enviar mensaje" onClose={() => setShowMessageModal(false)}>
-          <MessageForm
-            candidateId={application?.candidateId}
-            applicationId={applicationId}
-            onSubmit={(data) => sendMessageMutation.mutate({ ...data, candidateId: application?.candidateId, applicationId })}
-            isLoading={sendMessageMutation.isPending}
-          />
-        </Modal>
+      {messageOpen && (
+        <SendMessageModal
+          candidateId={candidateId}
+          applicationId={applicationId}
+          onClose={() => setMessageOpen(false)}
+          onSubmit={(payload) => createMessageMutation.mutate(payload)}
+          loading={createMessageMutation.isPending}
+        />
       )}
 
-      {/* Note Modal */}
-      {showNoteModal && (
-        <Modal title="Añadir nota" onClose={() => setShowNoteModal(false)}>
-          <NoteForm
-            onSubmit={(content) => addNoteMutation.mutate(content)}
-            isLoading={addNoteMutation.isPending}
-          />
-        </Modal>
+      {noteOpen && (
+        <AddNoteModal
+          onClose={() => setNoteOpen(false)}
+          onSubmit={(content) => addNoteMutation.mutate(content)}
+          loading={addNoteMutation.isPending}
+          initialValue={prefillNote}
+        />
       )}
     </div>
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50">
-      <div className="w-full max-w-lg rounded-[18px] bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-[#E6ECF5] px-6 py-4">
-          <h2 className="text-lg font-semibold text-[#0F172A]">{title}</h2>
-          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#475569]">&times;</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
+          <h3 className="text-lg font-bold text-[#0F172A]">{title}</h3>
+          <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-5">{children}</div>
       </div>
     </div>
   );
 }
 
-function InterviewForm({ applicationId, onSubmit, isLoading }: { applicationId: string; onSubmit: (data: Record<string, unknown>) => void; isLoading: boolean }) {
-  const [form, setForm] = useState({ date: '', type: 'presencial', location: '', meetingUrl: '', notesForCandidate: '' });
+function ScheduleInterviewModal({
+  applicationId,
+  candidateId,
+  jobId,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  applicationId: string;
+  candidateId: string;
+  jobId: string;
+  onClose: () => void;
+  onSubmit: (payload: Record<string, unknown>) => void;
+  loading: boolean;
+}) {
+  const [date, setDate] = useState('');
+  const [type, setType] = useState('presencial');
+  const [location, setLocation] = useState('');
+  const [meetingUrl, setMeetingUrl] = useState('');
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-[#334155] mb-1">Fecha y hora</label>
-        <input type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-[#334155] mb-1">Modalidad</label>
-        <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3">
+    <ModalShell title="Programar entrevista" onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit({ applicationId, candidateId, jobId, date, type, location, meetingUrl });
+        }}
+      >
+        <input type="datetime-local" value={date} onChange={(event) => setDate(event.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
+        <select value={type} onChange={(event) => setType(event.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm">
           <option value="presencial">Presencial</option>
           <option value="virtual">Virtual</option>
         </select>
-      </div>
-      {form.type === 'presencial' ? (
-        <div>
-          <label className="block text-sm font-medium text-[#334155] mb-1">Ubicación</label>
-          <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" placeholder="Dirección de la entrevista" />
+        {type === 'presencial' ? (
+          <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ubicacion" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+        ) : (
+          <input value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="Enlace" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Programar'}</Button>
         </div>
-      ) : (
-        <div>
-          <label className="block text-sm font-medium text-[#334155] mb-1">Enlace de videollamada</label>
-          <input type="url" value={form.meetingUrl} onChange={e => setForm({ ...form, meetingUrl: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" placeholder="https://meet.google.com/..." />
-        </div>
-      )}
-      <div>
-        <label className="block text-sm font-medium text-[#334155] mb-1">Notas para el candidato</label>
-        <textarea value={form.notesForCandidate} onChange={e => setForm({ ...form, notesForCandidate: e.target.value })} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={3} placeholder="Instrucciones adicionales..." />
-      </div>
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : 'Programar'}</Button>
-      </div>
-    </form>
+      </form>
+    </ModalShell>
   );
 }
 
-function MessageForm({ candidateId, applicationId, onSubmit, isLoading }: { candidateId: string; applicationId: string; onSubmit: (data: Record<string, unknown>) => void; isLoading: boolean }) {
-  const [form, setForm] = useState({ title: '', body: '', type: 'general' });
+function SendMessageModal({
+  candidateId,
+  applicationId,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  candidateId: string;
+  applicationId: string;
+  onClose: () => void;
+  onSubmit: (payload: Record<string, unknown>) => void;
+  loading: boolean;
+}) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const candidateAvailable = !!candidateId;
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-[#334155] mb-1">Asunto</label>
-        <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full h-10 rounded-lg border border-[#D1D9E6] px-3" required />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-[#334155] mb-1">Mensaje</label>
-        <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={5} required />
-      </div>
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="submit" disabled={isLoading}>{isLoading ? 'Enviando...' : 'Enviar mensaje'}</Button>
-      </div>
-    </form>
+    <ModalShell title="Enviar mensaje" onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!candidateId) return;
+          onSubmit({ candidateId, applicationId, title, body, type: 'general_message' });
+        }}
+      >
+        {!candidateAvailable ? (
+          <div className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-sm text-[#B91C1C]">
+            No se pudo obtener el candidato para enviar este mensaje.
+          </div>
+        ) : null}
+        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Asunto" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
+        <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={6} placeholder="Mensaje" className="w-full rounded-xl border border-[#E6ECF5] px-3 py-2 text-sm" required />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={loading || !candidateAvailable}>{loading ? 'Enviando...' : 'Enviar'}</Button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 
-function NoteForm({ onSubmit, isLoading }: { onSubmit: (content: string) => void; isLoading: boolean }) {
-  const [content, setContent] = useState('');
+function AddNoteModal({ onClose, onSubmit, loading, initialValue = '' }: { onClose: () => void; onSubmit: (content: string) => void; loading: boolean; initialValue?: string }) {
+  const [content, setContent] = useState(initialValue);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(content); }} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-[#334155] mb-1">Nota</label>
-        <textarea value={content} onChange={e => setContent(e.target.value)} className="w-full rounded-lg border border-[#D1D9E6] px-3 py-2" rows={4} placeholder="Escribe una nota interna..." required />
-      </div>
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : 'Guardar nota'}</Button>
-      </div>
-    </form>
+    <ModalShell title="Añadir nota" onClose={onClose}>
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit(content);
+        }}
+      >
+        <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={5} placeholder="Nota interna" className="w-full rounded-xl border border-[#E6ECF5] px-3 py-2 text-sm" required />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }

@@ -149,6 +149,10 @@ export const companies = {
   getApplications: (id: string) => api.get(`/companies/admin/${id}/applications`),
   createUser: (id: string, data: Record<string, unknown>) =>
     api.post(`/companies/admin/${id}/users`, data),
+  updateUser: (id: string, userId: string, data: Record<string, unknown>) =>
+    api.patch(`/companies/admin/${id}/users/${userId}`, data),
+  deleteUser: (id: string, userId: string) =>
+    api.delete(`/companies/admin/${id}/users/${userId}`),
   assignPlan: (id: string, planId: string) =>
     api.patch(`/companies/admin/${id}/plan`, { planId }),
 };

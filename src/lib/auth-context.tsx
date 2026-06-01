@@ -70,15 +70,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = Cookies.get('token');
-    if (token) {
-      resolveUserFromSession()
-        .then(setUser)
-        .catch(() => Cookies.remove('token'))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const bootstrap = async () => {
+      const token = Cookies.get('token');
+      if (!token) {
+        return;
+      }
+      try {
+        const sessionUser = await resolveUserFromSession();
+        setUser(sessionUser);
+      } catch {
+        Cookies.remove('token');
+      }
+    };
+
+    bootstrap().finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {

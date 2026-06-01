@@ -27,7 +27,7 @@ const companyNavItems = [
   { href: '/candidates', label: 'Candidatos', icon: Users },
   { href: '/interviews', label: 'Entrevistas', icon: Calendar },
   { href: '/messages', label: 'Mensajes', icon: MessageSquare },
-  { href: '/settings', label: 'Configuracion', icon: Settings },
+  { href: '/settings', label: 'Configuración', icon: Settings },
 ];
 
 const adminNavItems = [
@@ -111,10 +111,10 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex h-[46px] items-center gap-3 rounded-xl px-3 text-sm font-bold transition-all',
+                  'flex h-[46px] items-center gap-3 rounded-xl px-3 text-sm transition-all',
                   isActive
-                    ? 'bg-[#EEF4FF] text-[#0B5CFF]'
-                    : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#334155]'
+                    ? 'bg-[#EEF4FF] font-extrabold text-[#0B5CFF]'
+                    : 'font-bold text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#334155]'
                 )}
               >
                 <Icon className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#0B5CFF]' : 'text-[#94A3B8]')} />

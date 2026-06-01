@@ -25,7 +25,7 @@ export function StatCard({
 
   return (
     <div className="rounded-[20px] border border-[#EAEFF7] bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-      <div className="mb-2.5 flex items-center gap-2.5">
+      <div className="mb-2.5 flex items-start gap-2.5">
         <div
           className={cn(
             'flex h-10 w-10 items-center justify-center rounded-xl',
@@ -34,9 +34,11 @@ export function StatCard({
         >
           <Icon className={cn('h-5 w-5', iconColor || 'text-[#0B5CFF]')} />
         </div>
-        <p className="text-[14px] font-semibold text-[#334155]">{title}</p>
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold text-[#334155]">{title}</p>
+          <p className="text-[44px] font-bold leading-[46px] text-[#0F172A]">{value}</p>
+        </div>
       </div>
-      <p className="text-[40px] font-bold leading-[44px] text-[#0F172A]">{value}</p>
       {trend !== undefined && (
         <div className="mt-2 flex items-center gap-1">
           {isPositive ? (

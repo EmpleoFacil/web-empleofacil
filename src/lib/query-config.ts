@@ -1,3 +1,5 @@
+import { keepPreviousData } from '@tanstack/react-query';
+
 /** Shared React Query defaults for dashboard data */
 export const dashboardQueryOptions = {
   staleTime: 2 * 60 * 1000,
@@ -10,7 +12,7 @@ export const listQueryOptions = {
   staleTime: 60 * 1000,
   gcTime: 5 * 60 * 1000,
   refetchOnWindowFocus: false,
-  placeholderData: (previousData: unknown) => previousData,
+  placeholderData: keepPreviousData,
 } as const;
 
 export const queryKeys = {
