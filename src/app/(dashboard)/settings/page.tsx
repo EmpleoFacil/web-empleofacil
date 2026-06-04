@@ -197,6 +197,17 @@ export default function SettingsPage() {
     },
   });
 
+  const handleCloseQuotaModal = () => {
+    setQuotaModal(null);
+    setTimeout(() => {
+      plansRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFlashPlans(true);
+      setTimeout(() => {
+        setFlashPlans(false);
+      }, 2000);
+    }, 100);
+  };
+
   const currentPlanId = String(billingPlan?.plan?.id ?? billingPlan?.id ?? '');
   const usage = planLimits?.usage ?? billingPlan?.usage ?? billingPlan?.limits ?? {};
   const currentPlanFromList = (availablePlans ?? []).find((p: Plan) => p.id === currentPlanId);
@@ -274,7 +285,22 @@ export default function SettingsPage() {
                   <h3 className="text-xl font-bold text-[#0F172A]">Usuarios de la empresa</h3>
                   <p className="text-sm text-[#64748B]">Gestiona los usuarios con acceso al portal.</p>
                 </div>
-                <Button variant="outline" className="h-10" onClick={() => setUserModalOpen(true)}>
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => {
+                    const isExceeded = usage?.users?.max && usage?.users?.current >= usage?.users?.max;
+                    if (isExceeded) {
+                      setQuotaModal({
+                        type: 'users',
+                        title: '¡Se acabó tu cuota de usuarios!',
+                        message: 'Has alcanzado el número máximo de usuarios permitidos en tu empresa. Mejora tu plan para agregar más miembros a tu equipo.'
+                      });
+                      return;
+                    }
+                    setUserModalOpen(true);
+                  }}
+                >
                   <Plus className="h-4 w-4" />
                   Agregar usuario
                 </Button>
@@ -429,6 +455,30 @@ export default function SettingsPage() {
         />
       )}
       {planReference ? <div className="fixed bottom-4 right-4 rounded-xl bg-[#0F172A] px-4 py-2 text-xs font-semibold text-white">Referencia guardada: {planReference}</div> : null}
+
+      {quotaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all duration-300">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF5E6]">
+                <AlertTriangle className="h-7 w-7 text-[#F59E0B]" />
+              </div>
+              <h3 className="text-xl font-bold text-[#0F172A]">{quotaModal.title}</h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-[#475569]">
+                {quotaModal.message}
+              </p>
+            </div>
+            <div className="mt-6 flex justify-center">
+              <Button
+                onClick={handleCloseQuotaModal}
+                className="w-full bg-[#0B5CFF] text-white hover:bg-[#004BDD] h-11 rounded-xl text-sm font-bold"
+              >
+                Ver planes y actualizar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
