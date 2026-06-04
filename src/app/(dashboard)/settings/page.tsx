@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, Check, Edit, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { Building2, Check, Edit, Plus, Save, Trash2, Upload, AlertTriangle } from 'lucide-react';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +54,9 @@ export default function SettingsPage() {
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [planModal, setPlanModal] = useState<Plan | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const plansRef = useRef<HTMLDivElement>(null);
+  const [quotaModal, setQuotaModal] = useState<{ type: 'jobs' | 'users' | 'general'; title: string; message: string } | null>(null);
+  const [flashPlans, setFlashPlans] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<CompanyUser | null>(null);
   const [annual, setAnnual] = useState(false);
@@ -91,6 +94,35 @@ export default function SettingsPage() {
     queryKey: ['company-available-plans'],
     queryFn: () => companies.getAvailablePlans().then((res) => (Array.isArray(res.data) ? res.data : res.data.items ?? [])),
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const quotaExceeded = params.get('quotaExceeded');
+    if (quotaExceeded) {
+      if (quotaExceeded === 'jobs') {
+        setQuotaModal({
+          type: 'jobs',
+          title: '¡Se acabó tu cuota de vacantes!',
+          message: 'Has alcanzado el número máximo de vacantes activas permitidas por tu plan actual. Mejora tu plan para continuar publicando vacantes y encontrar talento ideal.'
+        });
+      } else if (quotaExceeded === 'users') {
+        setQuotaModal({
+          type: 'users',
+          title: '¡Se acabó tu cuota de usuarios!',
+          message: 'Has alcanzado el número máximo de usuarios permitidos en tu empresa. Mejora tu plan para agregar más miembros a tu equipo.'
+        });
+      } else {
+        setQuotaModal({
+          type: 'general',
+          title: '¡Límite de cuota alcanzado!',
+          message: 'Has alcanzado uno de los límites de capacidad en tu plan actual. Mejora tu plan para seguir creciendo.'
+        });
+      }
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   const form = useMemo(() => {
     return {
@@ -322,8 +354,14 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="xl:col-span-7">
-            <CardContent className="space-y-4 p-5">
+          <div ref={plansRef} className="xl:col-span-7">
+            <Card className={cn(
+              "w-full transition-all duration-1000 ease-out",
+              flashPlans
+                ? "bg-blue-50 border-blue-400 ring-4 ring-blue-500/20 shadow-md"
+                : ""
+            )}>
+              <CardContent className="space-y-4 p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-[#0F172A]">Planes disponibles</h3>
@@ -358,6 +396,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
 
