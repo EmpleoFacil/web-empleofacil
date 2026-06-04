@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -390,8 +390,8 @@ function PlanModal({ mode, onClose, onCreate, onUpdate, loading }: { mode: Plan 
   const [visibleCandidatesLimit, setVisibleCandidatesLimit] = useState(isEdit ? String(mode.visibleCandidatesLimit ?? 100) : '100');
 
   return (
-    <ModalShell title={isEdit ? 'Editar plan' : 'Nuevo plan'} onClose={onClose}>
-      <form className="space-y-3" onSubmit={(e) => {
+    <ModalShell title={isEdit ? 'Editar plan de suscripción' : 'Crear nuevo plan'} onClose={onClose}>
+      <form className="space-y-4" onSubmit={(e) => {
         e.preventDefault();
         const payload = {
           name,
@@ -406,14 +406,90 @@ function PlanModal({ mode, onClose, onCreate, onUpdate, loading }: { mode: Plan 
         if (isEdit) onUpdate((mode as Plan).id, payload);
         else onCreate(payload);
       }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
-        <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Precio" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
-        <div className="grid grid-cols-3 gap-2">
-          <input type="number" value={publicationLimit} onChange={(e) => setPublicationLimit(e.target.value)} placeholder="Publicaciones" className="h-11 rounded-xl border border-[#E6ECF5] px-3 text-sm" />
-          <input type="number" value={userLimit} onChange={(e) => setUserLimit(e.target.value)} placeholder="Usuarios" className="h-11 rounded-xl border border-[#E6ECF5] px-3 text-sm" />
-          <input type="number" value={visibleCandidatesLimit} onChange={(e) => setVisibleCandidatesLimit(e.target.value)} placeholder="Candidatos" className="h-11 rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+        <div className="space-y-3.5">
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">
+              Nombre del plan <span className="text-[#EF4444]">*</span>
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Básico, Profesional, Empresarial..."
+              className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">
+              Precio mensual (C$) <span className="text-[#EF4444]">*</span>
+            </label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="Ej. 1500"
+              className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]"
+              required
+            />
+          </div>
+
+          <div className="rounded-xl border border-[#E6ECF5] bg-[#F8FAFC] p-4 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#64748B] mb-1">Límites y capacidades</p>
+            
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-bold text-[#334155]">Límite de vacantes activas</label>
+                <span className="text-xs text-[#64748B]">0 = ilimitadas</span>
+              </div>
+              <input
+                type="number"
+                value={publicationLimit}
+                onChange={(e) => setPublicationLimit(e.target.value)}
+                placeholder="Ej. 10"
+                className="h-10 w-full rounded-xl border border-[#E6ECF5] bg-white px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]"
+              />
+              <p className="mt-1 text-[11px] text-[#64748B]">Vacantes activas simultáneamente en la plataforma por mes.</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-bold text-[#334155]">Límite de usuarios</label>
+                <span className="text-xs text-[#64748B]">0 = ilimitados</span>
+              </div>
+              <input
+                type="number"
+                value={userLimit}
+                onChange={(e) => setUserLimit(e.target.value)}
+                placeholder="Ej. 5"
+                className="h-10 w-full rounded-xl border border-[#E6ECF5] bg-white px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]"
+              />
+              <p className="mt-1 text-[11px] text-[#64748B]">Cuentas de reclutadores adicionales permitidas dentro de la empresa.</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-bold text-[#334155]">Candidatos visibles</label>
+                <span className="text-xs text-[#64748B]">0 = ilimitados</span>
+              </div>
+              <input
+                type="number"
+                value={visibleCandidatesLimit}
+                onChange={(e) => setVisibleCandidatesLimit(e.target.value)}
+                placeholder="Ej. 100"
+                className="h-10 w-full rounded-xl border border-[#E6ECF5] bg-white px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]"
+              />
+              <p className="mt-1 text-[11px] text-[#64748B]">Cantidad de perfiles de candidatos completos a visualizar.</p>
+            </div>
+          </div>
         </div>
-        <div className="flex justify-end gap-2"><Button variant="outline" type="button" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button></div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#EEF2F7]">
+          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Guardando...' : 'Guardar plan'}
+          </Button>
+        </div>
       </form>
     </ModalShell>
   );
@@ -427,12 +503,35 @@ function PaymentModal({ companies, plans, onClose, onSubmit, loading }: { compan
 
   return (
     <ModalShell title="Registrar cobro manual" onClose={onClose}>
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); onSubmit({ companyId, planId, amount: Number(amount || 0), reference }); }}>
-        <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required><option value="">Empresa</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required><option value="">Plan</option>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
-        <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Monto" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
-        <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Referencia" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
-        <div className="flex justify-end gap-2"><Button variant="outline" type="button" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={loading}>{loading ? 'Registrando...' : 'Registrar'}</Button></div>
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSubmit({ companyId, planId, amount: Number(amount || 0), reference }); }}>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">Seleccionar empresa <span className="text-[#EF4444]">*</span></label>
+            <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]" required>
+              <option value="">-- Seleccionar empresa --</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">Seleccionar plan <span className="text-[#EF4444]">*</span></label>
+            <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]" required>
+              <option value="">-- Seleccionar plan --</option>
+              {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">Monto cobrado (C$) <span className="text-[#EF4444]">*</span></label>
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ej. 3000" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">Número de referencia / comprobante</label>
+            <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Ej. REF-83749" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#EEF2F7]">
+          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={loading}>{loading ? 'Registrando...' : 'Registrar pago'}</Button>
+        </div>
       </form>
     </ModalShell>
   );
@@ -443,10 +542,27 @@ function AssignPlanModal({ companies, plans, onClose, onSubmit, loading }: { com
   const [planId, setPlanId] = useState('');
   return (
     <ModalShell title="Asignar plan a empresa" onClose={onClose}>
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); onSubmit({ companyId, planId }); }}>
-        <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required><option value="">Empresa</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required><option value="">Plan</option>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
-        <div className="flex justify-end gap-2"><Button variant="outline" type="button" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={loading}>{loading ? 'Asignando...' : 'Asignar'}</Button></div>
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSubmit({ companyId, planId }); }}>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">Seleccionar empresa <span className="text-[#EF4444]">*</span></label>
+            <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]" required>
+              <option value="">-- Seleccionar empresa --</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-bold text-[#334155]">Seleccionar plan <span className="text-[#EF4444]">*</span></label>
+            <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EEF4FF]" required>
+              <option value="">-- Seleccionar plan --</option>
+              {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#EEF2F7]">
+          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={loading}>{loading ? 'Asignando...' : 'Asignar plan'}</Button>
+        </div>
       </form>
     </ModalShell>
   );
