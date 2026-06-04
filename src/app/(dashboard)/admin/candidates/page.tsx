@@ -20,6 +20,7 @@ import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { candidates } from '@/lib/api';
 import { cn, formatDateTime, getStatusLabel, labelizeDocumentType, formatDate } from '@/lib/utils';
 import { DocumentPreviewModal } from '@/components/ui/document-preview-modal';
+import { useUrlSearchParam } from '@/lib/use-url-search-param';
 
 type CandidateRow = {
   id: string;
@@ -74,6 +75,11 @@ export default function AdminCandidatesPage() {
   const [city, setCity] = useState('');
   const [profile, setProfile] = useState('');
   const [page, setPage] = useState(1);
+
+  useUrlSearchParam((q) => {
+    setSearch(q);
+    setPage(1);
+  });
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [drawerCandidateId, setDrawerCandidateId] = useState<string | null>(null);

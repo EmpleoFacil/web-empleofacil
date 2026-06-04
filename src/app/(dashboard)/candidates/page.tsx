@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { applications, interviews, jobs, messages } from '@/lib/api';
 import { cn, formatDate, getStatusLabel } from '@/lib/utils';
 import * as XLSX from 'xlsx';
+import { useUrlSearchParam } from '@/lib/use-url-search-param';
 
 type ViewMode = 'table' | 'pipeline';
 
@@ -107,6 +108,7 @@ export default function CandidatesPage() {
   const [jobId, setJobId] = useState('');
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
+  useUrlSearchParam(setSearch);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<PipelineApplication | null>(null);
   const [noteModalOpen, setNoteModalOpen] = useState(false);

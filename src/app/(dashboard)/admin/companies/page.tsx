@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { billing, companies } from '@/lib/api';
 import { formatDateTime, getStatusLabel } from '@/lib/utils';
+import { useUrlSearchParam } from '@/lib/use-url-search-param';
 
 type CompanyRow = {
   id: string;
@@ -52,6 +53,11 @@ export default function AdminCompaniesPage() {
   const [planId, setPlanId] = useState('');
   const [city, setCity] = useState('');
   const [page, setPage] = useState(1);
+
+  useUrlSearchParam((q) => {
+    setSearch(q);
+    setPage(1);
+  });
   const [menuId, setMenuId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<CompanyRow | null>(null);
