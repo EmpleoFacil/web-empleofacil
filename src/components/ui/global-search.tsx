@@ -255,7 +255,7 @@ export function GlobalSearch({ className }: { className?: string }) {
                       type="button"
                       className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-[#F8FAFC]"
                       onClick={() => {
-                        router.push(`/candidates/${row.candidate.id}`);
+                        router.push(`/candidates/${row.applicationId}`);
                         setOpen(false);
                       }}
                     >

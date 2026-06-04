@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -22,15 +22,27 @@ import {
   Download,
   Eye,
   FileText,
+  X,
 } from 'lucide-react';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
+import { useAuth } from '@/lib/auth-context';
 import { applications, candidates, documents, interviews, messages } from '@/lib/api';
-import { cn, formatDate, formatDateTime, getStatusLabel } from '@/lib/utils';
+import { cn, formatDate, formatDateTime, getDisplayName, getStatusLabel } from '@/lib/utils';
 
 type Tab = 'resumen' | 'documentos' | 'historial' | 'entrevistas' | 'evaluaciones';
+type NoteRecord = Record<string, unknown>;
+type NoteOverride = {
+  content: string;
+  editedAt: string;
+  editorName: string;
+};
+type CreatedNoteOverride = {
+  authorName: string;
+  createdAt: string;
+};
 
 const statusOptions = [
   { value: 'applied', label: 'Nuevo' },
@@ -57,9 +69,14 @@ function labelizeDocumentType(value: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function isPdfUrl(url: string): boolean {
+  return /\.pdf(\?|$)/i.test(url);
+}
+
 export default function CandidateDetailPage() {
   const params = useParams();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const applicationId = String(params.id ?? '');
 
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
@@ -68,7 +85,11 @@ export default function CandidateDetailPage() {
   const [messageOpen, setMessageOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteMenuId, setNoteMenuId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [prefillNote, setPrefillNote] = useState('');
+  const [editedNoteOverrides, setEditedNoteOverrides] = useState<Record<string, NoteOverride>>({});
+  const [createdNoteOverrides, setCreatedNoteOverrides] = useState<Record<string, CreatedNoteOverride>>({});
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
 
   const { data: application, isPending: applicationLoading } = useQuery({
     queryKey: ['candidate-application-detail', applicationId],
@@ -131,16 +152,55 @@ export default function CandidateDetailPage() {
 
   const addNoteMutation = useMutation({
     mutationFn: (content: string) => applications.addNote(applicationId, content),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      const note = response.data as Record<string, unknown> | undefined;
+      const noteId = String(note?.id ?? '');
+      if (noteId) {
+        const authorName = user?.email ? getDisplayName(user.email) : 'Usuario';
+        setCreatedNoteOverrides((current) => ({
+          ...current,
+          [noteId]: {
+            authorName,
+            createdAt: new Date().toISOString(),
+          },
+        }));
+      }
       queryClient.invalidateQueries({ queryKey: ['candidate-application-detail', applicationId] });
+      setEditingNoteId(null);
+      setPrefillNote('');
       setNoteOpen(false);
     },
   });
 
+  const updateNoteMutation = useMutation({
+    mutationFn: ({ noteId, content }: { noteId: string; content: string }) =>
+      applications.updateNote(applicationId, noteId, content),
+    onSuccess: (_, { noteId, content }) => {
+      const editorName = user?.email ? getDisplayName(user.email) : 'Usuario';
+      setEditedNoteOverrides((current) => ({
+        ...current,
+        [noteId]: {
+          content,
+          editedAt: new Date().toISOString(),
+          editorName,
+        },
+      }));
+      queryClient.invalidateQueries({ queryKey: ['candidate-application-detail', applicationId] });
+      setEditingNoteId(null);
+      setPrefillNote('');
+      setNoteOpen(false);
+    },
+    onError: () => {
+      window.alert('Editar notas requiere soporte del backend para actualizar la nota existente.');
+    },
+  });
+
   const notes = useMemo(() => {
-    const arr = (application?.notes as Array<Record<string, unknown>> | undefined) ?? [];
+    const arr = (application?.notes as Array<NoteRecord> | undefined) ?? [];
     return Array.isArray(arr) ? arr : [];
   }, [application]);
+
+  const currentUserName = user?.email ? getDisplayName(user.email) : 'Usuario';
 
   const appTimeline = useMemo(() => {
     const arr = (application?.timeline as Array<Record<string, unknown>> | undefined) ?? [];
@@ -358,8 +418,30 @@ export default function CandidateDetailPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="success">Verificado</Badge>
-                            <button type="button" className="rounded border border-[#E6ECF5] p-1"><Eye className="h-4 w-4 text-[#64748B]" /></button>
-                            <button type="button" className="rounded border border-[#E6ECF5] p-1"><Download className="h-4 w-4 text-[#64748B]" /></button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = String(doc.fileUrl ?? '');
+                                if (url) setPreviewDoc({ url, title: labelizeDocumentType(String(doc.type ?? 'documento')) });
+                              }}
+                              disabled={!doc.fileUrl}
+                              className="rounded border border-[#E6ECF5] p-1 hover:bg-[#F8FAFC] disabled:opacity-40"
+                              title="Previsualizar"
+                            >
+                              <Eye className="h-4 w-4 text-[#64748B]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = String(doc.fileUrl ?? '');
+                                if (url) window.open(url, '_blank');
+                              }}
+                              disabled={!doc.fileUrl}
+                              className="rounded border border-[#E6ECF5] p-1 hover:bg-[#F8FAFC] disabled:opacity-40"
+                              title="Descargar"
+                            >
+                              <Download className="h-4 w-4 text-[#64748B]" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -408,7 +490,30 @@ export default function CandidateDetailPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="success">Verificado</Badge>
-                        <button type="button" className="rounded border border-[#E6ECF5] p-1"><Download className="h-4 w-4 text-[#64748B]" /></button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = String(doc.fileUrl ?? '');
+                            if (url) setPreviewDoc({ url, title: labelizeDocumentType(String(doc.type ?? 'documento')) });
+                          }}
+                          disabled={!doc.fileUrl}
+                          className="rounded border border-[#E6ECF5] p-1 hover:bg-[#F8FAFC] disabled:opacity-40"
+                          title="Previsualizar"
+                        >
+                          <Eye className="h-4 w-4 text-[#64748B]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = String(doc.fileUrl ?? '');
+                            if (url) window.open(url, '_blank');
+                          }}
+                          disabled={!doc.fileUrl}
+                          className="rounded border border-[#E6ECF5] p-1 hover:bg-[#F8FAFC] disabled:opacity-40"
+                          title="Descargar"
+                        >
+                          <Download className="h-4 w-4 text-[#64748B]" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -476,7 +581,7 @@ export default function CandidateDetailPage() {
               <CardContent className="p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xl font-bold text-[#0F172A]">Notas internas</h3>
-                  <Button variant="outline" size="sm" onClick={() => { setPrefillNote(''); setNoteOpen(true); }}>
+                  <Button variant="outline" size="sm" onClick={() => { setEditingNoteId(null); setPrefillNote(''); setNoteOpen(true); }}>
                     <Plus className="h-4 w-4" />
                     Añadir nota
                   </Button>
@@ -488,23 +593,11 @@ export default function CandidateDetailPage() {
                       <div key={String(note.id)} className="rounded-xl border border-[#F3E8B5] bg-[#FFFBEA] p-3">
                         <p className="inline-flex items-start gap-2 text-sm text-[#334155]">
                           <NotebookPen className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" />
-                          {String(note.content ?? note.note ?? note.text ?? note.message ?? 'Sin contenido')}
+                          {getNoteContent(note, editedNoteOverrides)}
                         </p>
                         <div className="mt-2 flex items-center justify-between text-xs text-[#64748B]">
                           <p>
-                            {(() => {
-                              const authorCandidates = [
-                                (note.author as { name?: string } | undefined)?.name,
-                                (note.createdBy as { name?: string; email?: string } | undefined)?.name,
-                                (note.createdBy as { name?: string; email?: string } | undefined)?.email,
-                                (note.user as { name?: string; email?: string } | undefined)?.name,
-                                (note.user as { name?: string; email?: string } | undefined)?.email,
-                                String(note.authorName ?? note.createdByName ?? ''),
-                              ];
-                              const author = authorCandidates.find((v) => String(v ?? '').trim()) || 'Equipo';
-                              return author;
-                            })()}{' '}
-                            - {formatDateTime(String(note.createdAt ?? note.created_at ?? note.date ?? ''))}
+                            {formatNoteMeta(note, editedNoteOverrides, createdNoteOverrides, currentUserName)}
                           </p>
                           <button type="button" className="rounded border border-[#E6ECF5] p-1 text-[#64748B]" onClick={() => setNoteMenuId(noteMenuId === String(note.id) ? null : String(note.id))}>
                             <Ellipsis className="h-4 w-4" />
@@ -516,7 +609,8 @@ export default function CandidateDetailPage() {
                               type="button"
                               className="block w-full px-3 py-2 text-left text-xs font-medium text-[#334155] hover:bg-[#F8FAFC]"
                               onClick={() => {
-                                setPrefillNote(String(note.content ?? note.note ?? note.text ?? note.message ?? ''));
+                                setEditingNoteId(String(note.id));
+                                setPrefillNote(getNoteContent(note, editedNoteOverrides));
                                 setNoteOpen(true);
                                 setNoteMenuId(null);
                               }}
@@ -607,20 +701,39 @@ export default function CandidateDetailPage() {
 
       {noteOpen && (
         <AddNoteModal
+          key={editingNoteId ?? 'new'}
           onClose={() => setNoteOpen(false)}
-          onSubmit={(content) => addNoteMutation.mutate(content)}
-          loading={addNoteMutation.isPending}
+          onSubmit={(content) => {
+            if (editingNoteId) {
+              updateNoteMutation.mutate({ noteId: editingNoteId, content });
+              return;
+            }
+            addNoteMutation.mutate(content);
+          }}
+          loading={addNoteMutation.isPending || updateNoteMutation.isPending}
           initialValue={prefillNote}
+          title={editingNoteId ? 'Editar nota' : 'Añadir nota'}
+          submitLabel={editingNoteId ? 'Guardar cambios' : 'Guardar'}
+        />
+      )}
+
+      {previewDoc && (
+        <DocumentPreviewModal
+          url={previewDoc.url}
+          title={previewDoc.title}
+          onClose={() => setPreviewDoc(null)}
         />
       )}
     </div>
   );
 }
 
-function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+/* ── Modales ── */
+
+function ModalShell({ title, onClose, children, maxWidth }: { title: string; onClose: () => void; children: React.ReactNode; maxWidth?: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white">
+      <div className={cn('w-full rounded-2xl bg-white', maxWidth ?? 'max-w-lg')}>
         <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
           <h3 className="text-lg font-bold text-[#0F172A]">{title}</h3>
           <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
@@ -630,6 +743,123 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
     </div>
   );
 }
+
+function DocumentPreviewModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  const pdf = isPdfUrl(url);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
+      <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
+          <h3 className="text-lg font-bold text-[#0F172A]">{title}</h3>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
+              <Download className="mr-1 h-4 w-4" />
+              Abrir en pestaña
+            </Button>
+            <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-[#F1F5F9]">
+              <X className="h-5 w-5 text-[#64748B]" />
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-center p-5">
+          {pdf ? (
+            <iframe src={url} className="h-[70vh] w-full rounded-lg border border-[#E6ECF5]" title={title} />
+          ) : (
+            <img src={url} alt={title} className="max-h-[70vh] max-w-full rounded-lg object-contain" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Helpers de notas ── */
+
+function getFirstNonEmpty(values: Array<unknown>): string | null {
+  const match = values.find((value) => String(value ?? '').trim());
+  return match ? String(match).trim() : null;
+}
+
+function getNoteContent(note: NoteRecord, overrides: Record<string, NoteOverride>): string {
+  const noteId = String(note.id ?? '');
+  return overrides[noteId]?.content ?? String(note.content ?? note.note ?? note.text ?? note.message ?? 'Sin contenido');
+}
+
+function getNoteCreatedAt(note: NoteRecord): string {
+  return String(note.createdAt ?? note.created_at ?? note.date ?? '');
+}
+
+function getNoteEditedAt(note: NoteRecord, overrides: Record<string, NoteOverride>): string {
+  const noteId = String(note.id ?? '');
+  return overrides[noteId]?.editedAt ?? String(note.editedAt ?? note.updatedAt ?? note.updated_at ?? '');
+}
+
+function getNoteAuthorName(
+  note: NoteRecord,
+  createdOverrides: Record<string, CreatedNoteOverride>,
+  currentUserName: string
+): string {
+  const noteId = String(note.id ?? '');
+  return (
+    createdOverrides[noteId]?.authorName ??
+    getFirstNonEmpty([
+      (note.author as { name?: string } | undefined)?.name,
+      (note.author as { email?: string } | undefined)?.email,
+      (note.createdBy as { name?: string; email?: string } | undefined)?.name,
+      (note.createdBy as { name?: string; email?: string } | undefined)?.email,
+      (note.user as { name?: string; email?: string } | undefined)?.name,
+      (note.user as { name?: string; email?: string } | undefined)?.email,
+      note.authorName,
+      note.createdByName,
+    ]) ??
+    currentUserName
+  );
+}
+
+function getNoteEditorName(
+  note: NoteRecord,
+  overrides: Record<string, NoteOverride>,
+  currentUserName: string
+): string {
+  const noteId = String(note.id ?? '');
+  return (
+    overrides[noteId]?.editorName ??
+    getFirstNonEmpty([
+      (note.editedBy as { name?: string; email?: string } | undefined)?.name,
+      (note.editedBy as { name?: string; email?: string } | undefined)?.email,
+      (note.updatedBy as { name?: string; email?: string } | undefined)?.name,
+      (note.updatedBy as { name?: string; email?: string } | undefined)?.email,
+      note.editedByName,
+      note.updatedByName,
+    ]) ??
+    currentUserName
+  );
+}
+
+function isEditedNote(note: NoteRecord, overrides: Record<string, NoteOverride>): boolean {
+  const createdAt = getNoteCreatedAt(note);
+  const editedAt = getNoteEditedAt(note, overrides);
+  if (!editedAt) return false;
+  if (!createdAt) return true;
+  return editedAt !== createdAt;
+}
+
+function formatNoteMeta(
+  note: NoteRecord,
+  overrides: Record<string, NoteOverride>,
+  createdOverrides: Record<string, CreatedNoteOverride>,
+  currentUserName: string
+): string {
+  if (isEditedNote(note, overrides)) {
+    return `Editada por ${getNoteEditorName(note, overrides, currentUserName)} - ${formatDateTime(getNoteEditedAt(note, overrides))}`;
+  }
+
+  const noteId = String(note.id ?? '');
+  const createdAt = createdOverrides[noteId]?.createdAt ?? getNoteCreatedAt(note);
+  return `${getNoteAuthorName(note, createdOverrides, currentUserName)} - ${formatDateTime(createdAt)}`;
+}
+
+/* ── Modales adicionales ── */
 
 function ScheduleInterviewModal({
   applicationId,
@@ -722,11 +952,25 @@ function SendMessageModal({
   );
 }
 
-function AddNoteModal({ onClose, onSubmit, loading, initialValue = '' }: { onClose: () => void; onSubmit: (content: string) => void; loading: boolean; initialValue?: string }) {
+function AddNoteModal({
+  onClose,
+  onSubmit,
+  loading,
+  initialValue = '',
+  title = 'Añadir nota',
+  submitLabel = 'Guardar',
+}: {
+  onClose: () => void;
+  onSubmit: (content: string) => void;
+  loading: boolean;
+  initialValue?: string;
+  title?: string;
+  submitLabel?: string;
+}) {
   const [content, setContent] = useState(initialValue);
 
   return (
-    <ModalShell title="Añadir nota" onClose={onClose}>
+    <ModalShell title={title} onClose={onClose}>
       <form
         className="space-y-3"
         onSubmit={(event) => {
@@ -737,7 +981,7 @@ function AddNoteModal({ onClose, onSubmit, loading, initialValue = '' }: { onClo
         <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={5} placeholder="Nota interna" className="w-full rounded-xl border border-[#E6ECF5] px-3 py-2 text-sm" required />
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</Button>
+          <Button type="submit" disabled={loading}>{loading ? 'Guardando...' : submitLabel}</Button>
         </div>
       </form>
     </ModalShell>

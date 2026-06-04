@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -465,7 +465,7 @@ export default function JobDetailPage() {
                         <TableRow key={app.id}>
                           <TableCell>
                             <Link
-                              href={`/candidates/${app.candidateId || app.id}`}
+                              href={`/candidates/${app.id}`}
                               className="font-medium text-[#0B5CFF] hover:text-[#004BDD]"
                             >
                               {app.candidate?.fullName || app.candidate?.name || app.fullName || 'Candidato'}

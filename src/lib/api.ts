@@ -85,6 +85,8 @@ export const applications = {
     api.patch(`/applications/${id}/status`, { status }),
   addNote: (id: string, content: string) =>
     api.post(`/applications/${id}/notes`, { content }),
+  updateNote: (applicationId: string, noteId: string, content: string) =>
+    api.patch(`/applications/${applicationId}/notes/${noteId}`, { content }),
 };
 
 // ── Interviews ──

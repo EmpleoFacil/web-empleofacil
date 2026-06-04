@@ -8,8 +8,10 @@ import { Briefcase, Eye, Save, Send, Users } from 'lucide-react';
 import { Header } from '@/components/ui/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { OptionChecklistPicker } from '@/components/ui/option-checklist-picker';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { companies, jobs } from '@/lib/api';
+import { BENEFIT_CATEGORIES, REQUIREMENT_CATEGORIES } from '@/lib/job-option-presets';
 
 type JobCategory = { id: string; name: string };
 
@@ -50,8 +52,8 @@ const initialFormData: JobFormData = {
   salaryMin: '',
   salaryMax: '',
   description: '',
-  requirements: ['', '', '', ''],
-  benefits: ['', '', '', ''],
+  requirements: [],
+  benefits: [],
 };
 
 function PlanProgress({ label, metric, icon }: { label: string; metric?: PlanMetric; icon: React.ReactNode }) {
@@ -110,14 +112,6 @@ export default function NewJobPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleArrayChange = (field: 'requirements' | 'benefits', index: number, value: string) => {
-    setFormData((prev) => {
-      const next = [...prev[field]];
-      next[index] = value;
-      return { ...prev, [field]: next };
-    });
-  };
-
   const handleSubmit = (publish: boolean) => {
     setDraftSaved(false);
 
@@ -133,8 +127,6 @@ export default function NewJobPage() {
     createMutation.mutate(payload);
   };
 
-  const filledRequirements = formData.requirements.filter((item) => item.trim()).length;
-  const filledBenefits = formData.benefits.filter((item) => item.trim()).length;
   const canPublish = (planLimits?.limits?.activeJobs?.remaining ?? 0) > 0;
 
   if (showSuccess) {
@@ -302,41 +294,25 @@ export default function NewJobPage() {
             </Card>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-[#0F172A]">Requisitos</h3>
-                    <span className="text-sm font-semibold text-[#16A34A]">{filledRequirements}/10</span>
-                  </div>
-                  {formData.requirements.map((item, index) => (
-                    <input
-                      key={`req-${index}`}
-                      type="text"
-                      value={item}
-                      onChange={(e) => handleArrayChange('requirements', index, e.target.value)}
-                      className="mb-2 h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none"
-                    />
-                  ))}
-                </CardContent>
-              </Card>
+              <OptionChecklistPicker
+                title="Requisitos"
+                accent="green"
+                categories={REQUIREMENT_CATEGORIES}
+                selected={formData.requirements}
+                onChange={(items) => handleChange('requirements', items)}
+                max={10}
+                searchPlaceholder="Buscar o agregar requisito"
+              />
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-[#0F172A]">Beneficios</h3>
-                    <span className="text-sm font-semibold text-[#16A34A]">{filledBenefits}/10</span>
-                  </div>
-                  {formData.benefits.map((item, index) => (
-                    <input
-                      key={`ben-${index}`}
-                      type="text"
-                      value={item}
-                      onChange={(e) => handleArrayChange('benefits', index, e.target.value)}
-                      className="mb-2 h-10 w-full rounded-lg border border-[#D1D9E6] px-3 text-sm focus:border-[#0B5CFF] focus:outline-none"
-                    />
-                  ))}
-                </CardContent>
-              </Card>
+              <OptionChecklistPicker
+                title="Beneficios"
+                accent="blue"
+                categories={BENEFIT_CATEGORIES}
+                selected={formData.benefits}
+                onChange={(items) => handleChange('benefits', items)}
+                max={10}
+                searchPlaceholder="Buscar o agregar beneficio"
+              />
             </div>
 
             <div className="flex items-center justify-between pt-4">
