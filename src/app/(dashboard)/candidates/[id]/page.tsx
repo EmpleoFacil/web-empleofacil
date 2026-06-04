@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -759,6 +759,30 @@ function ModalShell({ title, onClose, children, maxWidth }: { title: string; onC
 
 function DocumentPreviewModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
   const [isPdf, setIsPdf] = useState(isPdfUrl(url));
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+
+  useEffect(() => {
+    if (isPdf && !blobUrl) {
+      setLoadingPdf(true);
+      fetch(url)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          setBlobUrl(URL.createObjectURL(pdfBlob));
+        })
+        .catch(console.error)
+        .finally(() => setLoadingPdf(false));
+    }
+  }, [url, isPdf, blobUrl]);
+
+  // Limpiar el blobUrl al cerrar
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [blobUrl]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
       <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
@@ -779,14 +803,23 @@ function DocumentPreviewModal({ url, title, onClose }: { url: string; title: str
         </div>
         <div className="flex items-center justify-center p-5">
           {isPdf ? (
-            <iframe src={url} className="h-[70vh] w-full rounded-lg border border-[#E6ECF5]" title={title} />
+            loadingPdf ? (
+              <div className="flex h-[70vh] w-full items-center justify-center rounded-lg border border-[#E6ECF5] bg-[#F8FAFC]">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0B5CFF] border-t-transparent" />
+              </div>
+            ) : (
+              <iframe
+                src={blobUrl || url}
+                className="h-[70vh] w-full rounded-lg border border-[#E6ECF5]"
+                title={title}
+              />
+            )
           ) : (
             <img
               src={url}
               alt={title}
               className="max-h-[70vh] max-w-full rounded-lg object-contain"
               onError={() => {
-                // If it fails to load as an image, it might be a PDF that lacks a .pdf extension
                 if (!isPdf) setIsPdf(true);
               }}
             />
