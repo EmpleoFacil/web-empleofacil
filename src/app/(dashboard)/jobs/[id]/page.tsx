@@ -75,6 +75,9 @@ export default function JobDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job', id] });
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
       setIsEditing(false);
     },
     onError: (error: any) => {
@@ -87,6 +90,9 @@ export default function JobDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job', id] });
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
     },
     onError: (error: any) => {
       alert('Error al cambiar estado: ' + (error.response?.data?.message || error.message));
@@ -96,6 +102,9 @@ export default function JobDetailPage() {
   const deleteMutation = useMutation({
     mutationFn: () => jobs.delete(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
       router.push('/jobs');
     },
     onError: (error: any) => {

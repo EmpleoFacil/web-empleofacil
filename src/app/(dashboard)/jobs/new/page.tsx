@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Eye, Save, Send, Users } from 'lucide-react';
 import { Header } from '@/components/ui/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,6 +83,7 @@ function PlanProgress({ label, metric, icon }: { label: string; metric?: PlanMet
 
 export default function NewJobPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [showSuccess, setShowSuccess] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -100,6 +101,9 @@ export default function NewJobPage() {
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => jobs.create(data),
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
       if (variables.status === 'active') {
         setShowSuccess(true);
       } else {

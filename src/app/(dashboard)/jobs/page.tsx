@@ -103,6 +103,9 @@ export default function JobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.jobsCompanySummary });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
     },
   });
 
@@ -111,6 +114,9 @@ export default function JobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.jobsCompanySummary });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
       setDeleteTarget(null);
     },
   });
@@ -120,6 +126,9 @@ export default function JobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs-company'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.jobsCompanySummary });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
     },
     onError: () => {
       alert('Duplicar vacante no está disponible en el servidor aún.');

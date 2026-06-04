@@ -159,6 +159,9 @@ export default function SettingsPage() {
     mutationFn: (payload: Record<string, unknown>) => companies.createMyUser(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-users-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
       setUserModalOpen(false);
     },
   });
@@ -185,7 +188,12 @@ export default function SettingsPage() {
         return await companies.updateMyUser(id, { status: 'inactive', userId: id });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users-profile'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-users-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
+    },
   });
 
   const changePlanMutation = useMutation({
@@ -193,6 +201,9 @@ export default function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-billing-plan'] });
       queryClient.invalidateQueries({ queryKey: ['company-me-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['company-plan-limits'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-company'] });
       setPlanModal(null);
     },
   });
