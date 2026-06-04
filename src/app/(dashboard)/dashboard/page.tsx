@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useQueries } from '@tanstack/react-query';
 import {
@@ -191,7 +191,7 @@ export default function DashboardPage() {
 
   const handlePublishClick = () => {
     if (!canPublish) {
-      router.push('/settings');
+      router.push('/settings?quotaExceeded=jobs');
       return;
     }
     router.push('/jobs/new');
