@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -362,7 +362,7 @@ export default function NewJobPage() {
                 <div className="mt-6 rounded-lg border border-[#DCEBFF] bg-[#EAF2FF] p-4">
                   <h4 className="mb-1 font-medium text-[#0F172A]">Necesitas mas?</h4>
                   <p className="mb-3 text-sm text-[#475569]">Mejora tu plan y publica mas vacantes.</p>
-                  <Button variant="outline" size="sm" className="w-full" onClick={() => router.push('/settings')}>
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => router.push('/settings?quotaExceeded=jobs')}>
                     Ver planes
                   </Button>
                 </div>
