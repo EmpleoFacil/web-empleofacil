@@ -32,10 +32,10 @@ const ADMIN_ROUTE_MAP: { prefix: string; path: string; placeholder: string }[] =
 ];
 
 const COMPANY_ROUTE_MAP: { prefix: string; type: SearchType; placeholder: string; listPath: string }[] = [
-  { prefix: '/jobs', type: 'jobs', placeholder: 'Buscar vacantes por título...', listPath: '/jobs' },
-  { prefix: '/candidates', type: 'candidates', placeholder: 'Buscar candidatos por nombre...', listPath: '/candidates' },
-  { prefix: '/messages', type: 'messages', placeholder: 'Buscar mensajes por asunto...', listPath: '/messages' },
-  { prefix: '/interviews', type: 'candidates', placeholder: 'Buscar candidatos o vacantes...', listPath: '/candidates' },
+  { prefix: '/jobs', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/jobs' },
+  { prefix: '/candidates', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/candidates' },
+  { prefix: '/messages', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/messages' },
+  { prefix: '/interviews', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/candidates' },
   { prefix: '/dashboard', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/dashboard' },
 ];
 
@@ -100,7 +100,7 @@ export function GlobalSearch({ className }: { className?: string }) {
       setError(null);
       setFeedback(null);
       try {
-        const res = await search.company(q, config.type ?? 'all');
+        const res = await search.company(q, 'all');
         const payload = res.data?.data ?? res.data;
         setResults(payload as CompanySearchData);
         const total =
@@ -117,7 +117,7 @@ export function GlobalSearch({ className }: { className?: string }) {
         setLoading(false);
       }
     },
-    [config.type]
+    []
   );
 
   useEffect(() => {
