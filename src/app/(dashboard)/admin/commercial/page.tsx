@@ -67,6 +67,7 @@ export default function CommercialPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<PlatformSettings | null>(null);
   const [paymentsPage, setPaymentsPage] = useState(1);
+  const [viewingPayment, setViewingPayment] = useState<Payment | null>(null);
 
   const { data: plans } = useQuery({
     queryKey: ['commercial-plans'],
@@ -257,7 +258,7 @@ export default function CommercialPage() {
                         <td className="px-4 py-3 text-sm text-[#334155]">{formatDateTime(payment.paymentDate || payment.createdAt || '')}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            <ActionBtn onClick={() => window.alert(`Pago ${payment.id}\nEmpresa: ${payment.company?.name || 'Empresa'}\nEstado: ${paymentStatusLabel(payment.status)}`)}><Eye className="h-4 w-4" /></ActionBtn>
+                            <ActionBtn onClick={() => setViewingPayment(payment)}><Eye className="h-4 w-4" /></ActionBtn>
                             <ActionBtn onClick={exportPayments}><Download className="h-4 w-4" /></ActionBtn>
                             {payment.status === 'pending' ? <ActionBtn onClick={() => window.alert('Recordatorio de pago enviado')}><Mail className="h-4 w-4" /></ActionBtn> : null}
                           </div>
@@ -324,6 +325,7 @@ export default function CommercialPage() {
       {planModal && <PlanModal mode={planModal} onClose={() => setPlanModal(null)} onCreate={(payload) => createPlanMutation.mutate(payload)} onUpdate={(id, payload) => updatePlanMutation.mutate({ id, payload })} loading={createPlanMutation.isPending || updatePlanMutation.isPending} />}
       {paymentModalOpen && <PaymentModal companies={companiesList} plans={plans ?? []} onClose={() => setPaymentModalOpen(false)} onSubmit={(payload) => manualPaymentMutation.mutate(payload)} loading={manualPaymentMutation.isPending} />}
       {assignModalOpen && <AssignPlanModal companies={companiesList} plans={plans ?? []} onClose={() => setAssignModalOpen(false)} onSubmit={(payload) => assignPlanMutation.mutate(payload)} loading={assignPlanMutation.isPending} />}
+      {viewingPayment && <PaymentDetailModal payment={viewingPayment} onClose={() => setViewingPayment(null)} />}
     </div>
   );
 }
@@ -564,6 +566,78 @@ function AssignPlanModal({ companies, plans, onClose, onSubmit, loading }: { com
           <Button type="submit" disabled={loading}>{loading ? 'Asignando...' : 'Asignar plan'}</Button>
         </div>
       </form>
+    </ModalShell>
+  );
+}
+
+function PaymentDetailModal({ payment, onClose }: { payment: Payment; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(payment.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <ModalShell title="Detalles del pago" onClose={onClose}>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[#E6ECF5] bg-[#F8FAFC] p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF2FF] text-sm font-bold text-[#0B5CFF]">
+              {String(payment.company?.name ?? 'E').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#0F172A]">{payment.company?.name || 'Empresa'}</p>
+              <p className="text-xs text-[#64748B]">{payment.company?.city || 'Sin ciudad registrada'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex justify-between border-b border-[#EEF2F7] pb-2">
+            <span className="text-sm font-medium text-[#64748B]">Plan de suscripción</span>
+            <Badge variant={payment.plan?.name?.toLowerCase().includes('empresarial') ? 'purple' : payment.plan?.name?.toLowerCase().includes('profesional') ? 'info' : 'default'}>
+              {payment.plan?.name || '-'}
+            </Badge>
+          </div>
+
+          <div className="flex justify-between border-b border-[#EEF2F7] pb-2">
+            <span className="text-sm font-medium text-[#64748B]">Monto cobrado</span>
+            <span className="text-sm font-bold text-[#0F172A]">C$ {payment.amount.toLocaleString()}</span>
+          </div>
+
+          <div className="flex justify-between border-b border-[#EEF2F7] pb-2">
+            <span className="text-sm font-medium text-[#64748B]">Estado de facturación</span>
+            <Badge variant={statusBadge(payment.status) as 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple'}>
+              {paymentStatusLabel(payment.status)}
+            </Badge>
+          </div>
+
+          <div className="flex justify-between border-b border-[#EEF2F7] pb-2">
+            <span className="text-sm font-medium text-[#64748B]">Fecha de pago</span>
+            <span className="text-sm text-[#334155]">
+              {formatDateTime(payment.paymentDate || payment.createdAt || '')}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">ID de Pago</span>
+          <div className="flex gap-2">
+            <code className="flex-1 select-all rounded-lg bg-[#F8FAFC] border border-[#E6ECF5] px-3 py-2 text-xs font-mono text-[#334155] break-all">
+              {payment.id}
+            </code>
+            <Button variant="outline" size="sm" onClick={copyToClipboard} className="shrink-0 h-9">
+              {copied ? 'Copiado' : 'Copiar'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-[#EEF2F7]">
+          <Button onClick={onClose} className="w-full sm:w-auto">Aceptar</Button>
+        </div>
+      </div>
     </ModalShell>
   );
 }
