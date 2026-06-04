@@ -110,6 +110,21 @@ export default function CandidateDetailPage() {
     queryKey: ['candidate-docs', candidateId],
     queryFn: () => documents.getByCandidate(candidateId).then((res) => res.data as Array<Record<string, unknown>>),
     enabled: !!candidateId,
+    select: (data) => {
+      if (!Array.isArray(data)) return [];
+      const sortedDocs = [...data].sort((a, b) => {
+        const dateA = new Date(String(a.uploadedAt ?? a.createdAt ?? 0)).getTime();
+        const dateB = new Date(String(b.uploadedAt ?? b.createdAt ?? 0)).getTime();
+        return dateB - dateA;
+      });
+      const seenTypes = new Set<string>();
+      return sortedDocs.filter((doc) => {
+        const type = String(doc.type ?? 'unknown');
+        if (seenTypes.has(type)) return false;
+        seenTypes.add(type);
+        return true;
+      });
+    },
   });
 
   const { data: candidateMessages } = useQuery({
@@ -681,8 +696,6 @@ export default function CandidateDetailPage() {
       {scheduleOpen && (
         <ScheduleInterviewModal
           applicationId={applicationId}
-          candidateId={candidateId}
-          jobId={String((application.job as { id?: string } | undefined)?.id ?? '')}
           onClose={() => setScheduleOpen(false)}
           onSubmit={(payload) => createInterviewMutation.mutate(payload)}
           loading={createInterviewMutation.isPending}
@@ -745,13 +758,16 @@ function ModalShell({ title, onClose, children, maxWidth }: { title: string; onC
 }
 
 function DocumentPreviewModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
-  const pdf = isPdfUrl(url);
+  const [isPdf, setIsPdf] = useState(isPdfUrl(url));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
       <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
           <h3 className="text-lg font-bold text-[#0F172A]">{title}</h3>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsPdf(!isPdf)}>
+              {isPdf ? 'Ver como imagen' : 'Ver como PDF'}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
               <Download className="mr-1 h-4 w-4" />
               Abrir en pestaña
@@ -762,10 +778,18 @@ function DocumentPreviewModal({ url, title, onClose }: { url: string; title: str
           </div>
         </div>
         <div className="flex items-center justify-center p-5">
-          {pdf ? (
+          {isPdf ? (
             <iframe src={url} className="h-[70vh] w-full rounded-lg border border-[#E6ECF5]" title={title} />
           ) : (
-            <img src={url} alt={title} className="max-h-[70vh] max-w-full rounded-lg object-contain" />
+            <img
+              src={url}
+              alt={title}
+              className="max-h-[70vh] max-w-full rounded-lg object-contain"
+              onError={() => {
+                // If it fails to load as an image, it might be a PDF that lacks a .pdf extension
+                if (!isPdf) setIsPdf(true);
+              }}
+            />
           )}
         </div>
       </div>
@@ -863,50 +887,201 @@ function formatNoteMeta(
 
 function ScheduleInterviewModal({
   applicationId,
-  candidateId,
-  jobId,
   onClose,
   onSubmit,
   loading,
 }: {
   applicationId: string;
-  candidateId: string;
-  jobId: string;
   onClose: () => void;
   onSubmit: (payload: Record<string, unknown>) => void;
   loading: boolean;
 }) {
-  const [date, setDate] = useState('');
-  const [type, setType] = useState('presencial');
+  const initialSchedule = getInitialInterviewSchedule();
+  const [datePart, setDatePart] = useState(initialSchedule.date);
+  const [timePart, setTimePart] = useState(initialSchedule.time);
+  const [type, setType] = useState<'presencial' | 'virtual'>('presencial');
   const [location, setLocation] = useState('');
   const [meetingUrl, setMeetingUrl] = useState('');
+  const scheduleValue = buildInterviewDateTime(datePart, timePart);
+  const quickDates = getQuickInterviewDates();
+  const quickTimes = ['09:00', '10:30', '12:00', '14:00', '16:30'];
 
   return (
-    <ModalShell title="Programar entrevista" onClose={onClose}>
+    <ModalShell title="Programar entrevista" onClose={onClose} maxWidth="max-w-2xl">
       <form
-        className="space-y-3"
+        className="space-y-6"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit({ applicationId, candidateId, jobId, date, type, location, meetingUrl });
+          onSubmit({
+            applicationId,
+            date: scheduleValue,
+            type,
+            ...(type === 'presencial'
+              ? { location: location.trim() }
+              : { meetingUrl: meetingUrl.trim() }),
+          });
         }}
       >
-        <input type="datetime-local" value={date} onChange={(event) => setDate(event.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
-        <select value={type} onChange={(event) => setType(event.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm">
-          <option value="presencial">Presencial</option>
-          <option value="virtual">Virtual</option>
-        </select>
+        <div className="rounded-2xl border border-[#E6ECF5] bg-[linear-gradient(135deg,#F8FBFF_0%,#FFFFFF_62%)] p-4">
+          <p className="text-sm font-semibold text-[#0F172A]">Fecha y hora</p>
+          <p className="mt-1 text-xs text-[#64748B]">Separa el día de la hora para programar más rápido y evitar errores.</p>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-[#334155]">Día</span>
+              <input
+                type="date"
+                value={datePart}
+                min={quickDates[0]?.value}
+                onChange={(event) => setDatePart(event.target.value)}
+                className="h-12 w-full rounded-xl border border-[#D9E4F2] bg-white px-4 text-sm font-medium text-[#0F172A] outline-none transition focus:border-[#0B5CFF] focus:ring-4 focus:ring-[#EAF2FF]"
+                required
+              />
+              <div className="flex flex-wrap gap-2">
+                {quickDates.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setDatePart(option.value)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98]',
+                      datePart === option.value
+                        ? 'border-[#0B5CFF] bg-[#EAF2FF] text-[#0B5CFF]'
+                        : 'border-[#D9E4F2] bg-white text-[#64748B] hover:border-[#BFDBFE] hover:text-[#0F172A]'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-[#334155]">Hora</span>
+              <input
+                type="time"
+                value={timePart}
+                onChange={(event) => setTimePart(event.target.value)}
+                className="h-12 w-full rounded-xl border border-[#D9E4F2] bg-white px-4 text-sm font-medium text-[#0F172A] outline-none transition focus:border-[#0B5CFF] focus:ring-4 focus:ring-[#EAF2FF]"
+                required
+              />
+              <div className="flex flex-wrap gap-2">
+                {quickTimes.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setTimePart(option)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98]',
+                      timePart === option
+                        ? 'border-[#0B5CFF] bg-[#EAF2FF] text-[#0B5CFF]'
+                        : 'border-[#D9E4F2] bg-white text-[#64748B] hover:border-[#BFDBFE] hover:text-[#0F172A]'
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </label>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-[#DBEAFE] bg-[#F8FBFF] px-4 py-3 text-sm text-[#334155]">
+            <span className="font-semibold text-[#0F172A]">Programación seleccionada:</span>{' '}
+            {datePart && timePart ? formatDateTime(scheduleValue) : 'Completa la fecha y la hora.'}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-[#334155]">Modalidad</p>
+            <p className="mt-1 text-xs text-[#64748B]">Elige cómo se realizará la entrevista.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {[
+              { value: 'presencial', label: 'Presencial', hint: 'Usa una ubicación física.' },
+              { value: 'virtual', label: 'Virtual', hint: 'Comparte un enlace de videollamada.' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setType(option.value as 'presencial' | 'virtual')}
+                className={cn(
+                  'rounded-2xl border px-4 py-4 text-left transition active:scale-[0.99]',
+                  type === option.value
+                    ? 'border-[#0B5CFF] bg-[#EAF2FF] shadow-[0_10px_24px_rgba(11,92,255,0.08)]'
+                    : 'border-[#E6ECF5] bg-white hover:border-[#BFDBFE] hover:bg-[#F8FBFF]'
+                )}
+              >
+                <p className="text-sm font-semibold text-[#0F172A]">{option.label}</p>
+                <p className="mt-1 text-xs text-[#64748B]">{option.hint}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {type === 'presencial' ? (
-          <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ubicacion" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-[#334155]">Ubicación</span>
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="Ej. Oficina central, sala 2"
+              className="h-12 w-full rounded-xl border border-[#D9E4F2] bg-white px-4 text-sm text-[#0F172A] outline-none transition focus:border-[#0B5CFF] focus:ring-4 focus:ring-[#EAF2FF]"
+              required
+            />
+          </label>
         ) : (
-          <input value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="Enlace" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-[#334155]">Enlace</span>
+            <input
+              value={meetingUrl}
+              onChange={(event) => setMeetingUrl(event.target.value)}
+              placeholder="Ej. https://meet.google.com/..."
+              className="h-12 w-full rounded-xl border border-[#D9E4F2] bg-white px-4 text-sm text-[#0F172A] outline-none transition focus:border-[#0B5CFF] focus:ring-4 focus:ring-[#EAF2FF]"
+              required
+            />
+          </label>
         )}
-        <div className="flex justify-end gap-2 pt-2">
+
+        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
           <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
           <Button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Programar'}</Button>
         </div>
       </form>
     </ModalShell>
   );
+}
+
+function getInitialInterviewSchedule() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 30);
+  const minutes = now.getMinutes();
+  const roundedMinutes = minutes <= 30 ? 30 : 0;
+  if (roundedMinutes === 0) {
+    now.setHours(now.getHours() + 1);
+  }
+  now.setMinutes(roundedMinutes, 0, 0);
+
+  return {
+    date: now.toISOString().slice(0, 10),
+    time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+  };
+}
+
+function getQuickInterviewDates() {
+  const labels = ['Hoy', 'Mañana', 'En 2 días'];
+  return labels.map((label, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    return {
+      label,
+      value: date.toISOString().slice(0, 10),
+    };
+  });
+}
+
+function buildInterviewDateTime(datePart: string, timePart: string) {
+  return `${datePart}T${timePart}`;
 }
 
 function SendMessageModal({
