@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,7 +18,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { candidates } from '@/lib/api';
-import { cn, formatDateTime, getStatusLabel } from '@/lib/utils';
+import { cn, formatDateTime, getStatusLabel, labelizeDocumentType, formatDate } from '@/lib/utils';
+import { DocumentPreviewModal } from '@/components/ui/document-preview-modal';
 
 type CandidateRow = {
   id: string;
@@ -76,6 +77,7 @@ export default function AdminCandidatesPage() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [drawerCandidateId, setDrawerCandidateId] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
 
   const { data: summary } = useQuery({
     queryKey: ['admin-candidates-summary'],
@@ -276,6 +278,15 @@ export default function AdminCandidatesPage() {
             setDrawerCandidateId(null);
             setDrawerMode(null);
           }}
+          onPreviewDoc={setPreviewDoc}
+        />
+      )}
+
+      {previewDoc && (
+        <DocumentPreviewModal
+          url={previewDoc.url}
+          title={previewDoc.title}
+          onClose={() => setPreviewDoc(null)}
         />
       )}
     </div>
@@ -300,7 +311,17 @@ function IconBtn({ title, onClick, children }: { title: string; onClick: () => v
   );
 }
 
-function CandidateDrawer({ candidateId, mode, onClose }: { candidateId: string; mode: Exclude<DrawerMode, null>; onClose: () => void }) {
+function CandidateDrawer({
+  candidateId,
+  mode,
+  onClose,
+  onPreviewDoc,
+}: {
+  candidateId: string;
+  mode: Exclude<DrawerMode, null>;
+  onClose: () => void;
+  onPreviewDoc: (doc: { url: string; title: string }) => void;
+}) {
   const { data: detail, isPending: detailLoading } = useQuery({
     queryKey: ['candidate-drawer-detail', candidateId],
     queryFn: () => candidates.getById(candidateId).then((res) => res.data),
@@ -319,7 +340,22 @@ function CandidateDrawer({ candidateId, mode, onClose }: { candidateId: string; 
     enabled: mode === 'applications',
   });
 
-  const docs = toArray<Record<string, unknown>>(docsData);
+  const docs = useMemo(() => {
+    const rawDocs = toArray<Record<string, unknown>>(docsData);
+    const sortedDocs = [...rawDocs].sort((a, b) => {
+      const dateA = new Date(String(a.uploadedAt ?? a.createdAt ?? 0)).getTime();
+      const dateB = new Date(String(b.uploadedAt ?? b.createdAt ?? 0)).getTime();
+      return dateB - dateA;
+    });
+    const seenTypes = new Set<string>();
+    return sortedDocs.filter((doc) => {
+      const type = String(doc.type ?? 'unknown');
+      if (seenTypes.has(type)) return false;
+      seenTypes.add(type);
+      return true;
+    });
+  }, [docsData]);
+
   const apps = toArray<Record<string, unknown>>(appsData);
 
   return (
@@ -355,10 +391,47 @@ function CandidateDrawer({ candidateId, mode, onClose }: { candidateId: string; 
               <div className="h-24 animate-pulse rounded-xl bg-[#F1F5F9]" />
             ) : docs.length ? (
               docs.map((doc, index) => (
-                <div key={String(doc.id ?? index)} className="rounded-xl border border-[#E6ECF5] p-3">
-                  <p className="text-sm font-semibold text-[#0F172A]">{String(doc.type ?? doc.name ?? 'Documento')}</p>
-                  <p className="text-xs text-[#64748B]">Estado: {String(doc.status ?? 'pending')}</p>
-                  <p className="text-xs text-[#64748B]">Fecha: {formatDateTime(String(doc.createdAt ?? doc.uploadedAt ?? ''))}</p>
+                <div key={String(doc.id ?? index)} className="flex items-center justify-between rounded-xl border border-[#E6ECF5] p-3">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-[#94A3B8]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#0F172A]">
+                        {labelizeDocumentType(String(doc.type ?? doc.name ?? 'Documento'))}
+                      </p>
+                      <p className="text-xs text-[#64748B]">
+                        Subido el {formatDate(String(doc.uploadedAt ?? doc.createdAt ?? ''))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={doc.status === 'verified' ? 'success' : 'default'}>
+                      {String(doc.status ?? 'uploaded')}
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = String(doc.fileUrl ?? doc.url ?? '');
+                        if (url) onPreviewDoc({ url, title: labelizeDocumentType(String(doc.type ?? doc.name ?? 'Documento')) });
+                      }}
+                      disabled={!doc.fileUrl && !doc.url}
+                      className="rounded border border-[#E6ECF5] p-1.5 hover:bg-[#F8FAFC] disabled:opacity-40"
+                      title="Previsualizar"
+                    >
+                      <Eye className="h-4 w-4 text-[#64748B]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = String(doc.fileUrl ?? doc.url ?? '');
+                        if (url) window.open(url, '_blank');
+                      }}
+                      disabled={!doc.fileUrl && !doc.url}
+                      className="rounded border border-[#E6ECF5] p-1.5 hover:bg-[#F8FAFC] disabled:opacity-40"
+                      title="Descargar"
+                    >
+                      <Download className="h-4 w-4 text-[#64748B]" />
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (

@@ -1,4 +1,4 @@
-﻿import { clsx, type ClassValue } from 'clsx';
+import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
@@ -72,8 +72,8 @@ export function getModalityLabel(modality?: string | null) {
     presencial: 'Presencial',
     remoto: 'Remoto',
     remote: 'Remoto',
-    hibrido: 'HÃ­brido',
-    hybrid: 'HÃ­brido',
+    hibrido: 'Híbrido',
+    hybrid: 'Híbrido',
   };
   return labels[modality ?? ''] || modality || 'Presencial';
 }
@@ -99,3 +99,22 @@ export function getRoleLabel(
   return companyRoles[companyUserRole ?? ''] || 'Empresa';
 }
 
+export function labelizeDocumentType(value: string): string {
+  const map: Record<string, string> = {
+    police_record: 'Récord de policía',
+    cv: 'Currículum vitae',
+    resume: 'Currículum vitae',
+    id_front: 'Cédula frontal',
+    id_back: 'Cédula reverso',
+    certificate: 'Certificado',
+    diploma: 'Diploma',
+  };
+  if (map[value]) return map[value];
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function isPdfUrl(url: string): boolean {
+  return /\.pdf(\?|$)/i.test(url);
+}
