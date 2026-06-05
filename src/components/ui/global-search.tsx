@@ -32,11 +32,11 @@ const ADMIN_ROUTE_MAP: { prefix: string; path: string; placeholder: string }[] =
 ];
 
 const COMPANY_ROUTE_MAP: { prefix: string; type: SearchType; placeholder: string; listPath: string }[] = [
-  { prefix: '/jobs', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/jobs' },
-  { prefix: '/candidates', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/candidates' },
-  { prefix: '/messages', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/messages' },
-  { prefix: '/interviews', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/candidates' },
-  { prefix: '/dashboard', type: 'all', placeholder: 'Buscar candidatos, vacantes o mensajes...', listPath: '/dashboard' },
+  { prefix: '/jobs', type: 'jobs', placeholder: 'Buscar vacantes...', listPath: '/jobs' },
+  { prefix: '/candidates', type: 'candidates', placeholder: 'Buscar candidatos...', listPath: '/candidates' },
+  { prefix: '/messages', type: 'messages', placeholder: 'Buscar mensajes...', listPath: '/messages' },
+  { prefix: '/interviews', type: 'candidates', placeholder: 'Buscar candidatos...', listPath: '/candidates' },
+  { prefix: '/dashboard', type: 'all', placeholder: 'Buscar vacantes, candidatos o mensajes...', listPath: '/dashboard' },
 ];
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -90,7 +90,7 @@ export function GlobalSearch({ className }: { className?: string }) {
   }, [isAdmin, pathname]);
 
   const runCompanySearch = useCallback(
-    async (q: string) => {
+    async (q: string, type: SearchType = 'all') => {
       if (q.length < 2) {
         setResults(null);
         setError(null);
@@ -100,7 +100,7 @@ export function GlobalSearch({ className }: { className?: string }) {
       setError(null);
       setFeedback(null);
       try {
-        const res = await search.company(q, 'all');
+        const res = await search.company(q, type);
         const payload = res.data?.data ?? res.data;
         setResults(payload as CompanySearchData);
         const total =
@@ -128,8 +128,8 @@ export function GlobalSearch({ className }: { className?: string }) {
       setFeedback(debouncedQuery.length === 1 ? 'Escribe al menos 2 caracteres.' : null);
       return;
     }
-    void runCompanySearch(debouncedQuery);
-  }, [debouncedQuery, open, config.mode, runCompanySearch]);
+    void runCompanySearch(debouncedQuery, config.type);
+  }, [debouncedQuery, open, config.mode, config.type, runCompanySearch]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -167,7 +167,7 @@ export function GlobalSearch({ className }: { className?: string }) {
     }
 
     setOpen(true);
-    void runCompanySearch(q);
+    void runCompanySearch(q, config.type);
   };
 
   const hasHits =

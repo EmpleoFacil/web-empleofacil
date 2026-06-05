@@ -244,7 +244,12 @@ export default function JobsPage() {
                 <div className="md:col-span-3">
                   <select
                     value={filters.city}
-                    onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                    onChange={(e) => {
+                      const next = { ...filters, city: e.target.value };
+                      setFilters(next);
+                      setAppliedFilters(next);
+                      setPage(1);
+                    }}
                     className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white px-3 text-sm text-[#334155] placeholder:text-[#94A3B8] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
                   >
                     <option value="">Todas las ciudades</option>
@@ -258,7 +263,12 @@ export default function JobsPage() {
                 <div className="md:col-span-3">
                   <select
                     value={filters.status}
-                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                    onChange={(e) => {
+                      const next = { ...filters, status: e.target.value };
+                      setFilters(next);
+                      setAppliedFilters(next);
+                      setPage(1);
+                    }}
                     className="h-10 w-full rounded-lg border border-[#E6ECF5] bg-white px-3 text-sm text-[#334155] focus:border-[#0B5CFF] focus:outline-none focus:ring-2 focus:ring-[#EAF2FF]"
                   >
                     <option value="">Todos los estados</option>

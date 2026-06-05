@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { cn, formatDateTime } from '@/lib/utils';
+import { useUrlSearchParam } from '@/lib/use-url-search-param';
 
 type MessageStatus = 'sent' | 'responded' | 'read' | 'draft' | string;
 
@@ -86,6 +87,7 @@ export default function MessagesPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
+  useUrlSearchParam(setSearch);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
