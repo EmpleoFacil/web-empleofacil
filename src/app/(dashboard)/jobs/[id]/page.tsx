@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -16,6 +16,11 @@ import { Table, TableHead, TableHeader, TableRow, TableCell, TableBody } from '@
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { jobs, applications as appsApi, companies } from '@/lib/api';
 import { formatDate, getStatusLabel } from '@/lib/utils';
+
+function formatDateInput(value?: string | null) {
+  if (!value) return '';
+  return new Date(value).toISOString().slice(0, 10);
+}
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -42,6 +47,11 @@ export default function JobDetailPage() {
     queryFn: () => jobs.getCategories().then((res) => res.data),
   });
 
+  const categoriesWithOther = useMemo(
+    () => [...((categories as { id: string; name: string }[] | undefined) ?? []), { id: 'other', name: 'Otros' }],
+    [categories]
+  );
+
   const { data: applications } = useQuery({
     queryKey: ['job-applications', id],
     queryFn: () => appsApi.getByCompany({ jobId: id, limit: 50 }).then((res) => res.data),
@@ -57,12 +67,14 @@ export default function JobDetailPage() {
     if (jobData) {
       setFormData({
         title: jobData.title || '',
-        categoryId: jobData.categoryId || jobData.category?.id || '',
+        categoryId: jobData.customCategory ? 'other' : jobData.categoryId || jobData.category?.id || '',
+        customCategory: jobData.customCategory || '',
         city: jobData.city || '',
         modality: jobData.modality || 'presencial',
         employmentType: jobData.employmentType || 'tiempo_completo',
         salaryMin: jobData.salaryMin?.toString() || '',
         salaryMax: jobData.salaryMax?.toString() || '',
+        expiresAt: formatDateInput(jobData.expiresAt),
         description: jobData.description || '',
         requirements: jobData.requirements?.length ? jobData.requirements : [''],
         benefits: jobData.benefits?.length ? jobData.benefits : [''],
@@ -127,8 +139,12 @@ export default function JobDetailPage() {
   const handleSave = () => {
     const data = {
       ...formData,
+      categoryId: formData.categoryId || undefined,
+      customCategory:
+        formData.categoryId === 'other' ? formData.customCategory?.trim() || undefined : undefined,
       salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
       salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+      expiresAt: formData.expiresAt ? new Date(`${formData.expiresAt}T23:59:59`).toISOString() : null,
       requirements: formData.requirements.filter((r: string) => r.trim()),
       benefits: formData.benefits.filter((b: string) => b.trim()),
     };
@@ -162,7 +178,7 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Header title={jobData.title} subtitle="Detalle y edición de la vacante." />
+      <Header title={jobData.title} subtitle="Detalle y ediciÃ³n de la vacante." />
 
       <div className="p-6">
         <div className="mb-6 flex items-center justify-between">
@@ -204,15 +220,15 @@ export default function JobDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Información general */}
+            {/* InformaciÃ³n general */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-6">Información general</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-6">InformaciÃ³n general</h3>
                 {editing ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-[#334155] mb-1.5">
-                        Título del puesto <span className="text-[#EF4444]">*</span>
+                        TÃ­tulo del puesto <span className="text-[#EF4444]">*</span>
                       </label>
                       <input
                         type="text"
@@ -223,17 +239,26 @@ export default function JobDetailPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#334155] mb-1.5">Categoría</label>
+                      <label className="block text-sm font-medium text-[#334155] mb-1.5">CategorÃ­a</label>
                       <select
                         value={formData?.categoryId || ''}
                         onChange={(e) => handleChange('categoryId', e.target.value)}
                         className="w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                       >
-                        <option value="">Seleccionar categoría</option>
-                        {categories?.map((cat: { id: string; name: string }) => (
+                        <option value="">Seleccionar categorÃ­a</option>
+                        {categoriesWithOther.map((cat: { id: string; name: string }) => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                       </select>
+                      {formData?.categoryId === 'other' && (
+                        <input
+                          type="text"
+                          value={formData?.customCategory || ''}
+                          onChange={(e) => handleChange('customCategory', e.target.value)}
+                          placeholder="Escribe la categoria"
+                          className="mt-3 w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-[#334155] mb-1.5">Ciudad</label>
@@ -254,7 +279,7 @@ export default function JobDetailPage() {
                       >
                         <option value="presencial">Presencial</option>
                         <option value="remoto">Remoto</option>
-                        <option value="hibrido">Híbrido</option>
+                        <option value="hibrido">HÃ­brido</option>
                       </select>
                     </div>
                     <div>
@@ -292,12 +317,46 @@ export default function JobDetailPage() {
                         className="w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none focus:ring-1 focus:ring-[#0B5CFF]"
                       />
                     </div>
+                    <div className="md:col-span-2 rounded-2xl border border-[#D8E1EE] bg-[#F8FAFC] p-4">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-[#334155] mb-1.5">Caducidad</label>
+                          <input
+                            type="date"
+                            value={formData?.expiresAt || ''}
+                            min={new Date().toISOString().slice(0, 10)}
+                            onChange={(e) => handleChange('expiresAt', e.target.value)}
+                            className="w-full h-11 rounded-lg border border-[#D1D9E6] bg-white px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                          />
+                          <p className="mt-2 text-xs text-[#64748B]">
+                            La vacante se cerrara automaticamente al vencer esta fecha.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {[15, 30, 45, 60].map((days) => {
+                            const date = new Date();
+                            date.setDate(date.getDate() + days);
+                            const value = date.toISOString().slice(0, 10);
+                            return (
+                              <button
+                                key={days}
+                                type="button"
+                                onClick={() => handleChange('expiresAt', value)}
+                                className="rounded-full border border-[#D1D9E6] bg-white px-3 py-2 text-xs font-semibold text-[#334155] transition hover:border-[#0B5CFF] hover:text-[#0B5CFF]"
+                              >
+                                {days} dias
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
-                      <p className="text-xs text-[#64748B] mb-1">Categoría</p>
-                      <p className="text-sm font-medium text-[#0F172A]">{jobData.category?.name || 'Sin categoría'}</p>
+                      <p className="text-xs text-[#64748B] mb-1">CategorÃ­a</p>
+                      <p className="text-sm font-medium text-[#0F172A]">{jobData.customCategory || jobData.category?.name || 'Sin categorÃ­a'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-[#64748B] mb-1">Ciudad</p>
@@ -336,6 +395,12 @@ export default function JobDetailPage() {
                       <p className="text-sm font-medium text-[#0F172A]">{formatDate(jobData.updatedAt)}</p>
                     </div>
                     <div>
+                      <p className="text-xs text-[#64748B] mb-1">Caduca</p>
+                      <p className="text-sm font-medium text-[#0F172A]">
+                        {jobData.expiresAt ? formatDate(jobData.expiresAt) : 'Sin fecha'}
+                      </p>
+                    </div>
+                    <div>
                       <p className="text-xs text-[#64748B] mb-1">Postulaciones</p>
                       <p className="text-sm font-medium text-[#0F172A]">{applicationsCount}</p>
                     </div>
@@ -344,10 +409,10 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Descripción */}
+            {/* DescripciÃ³n */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Descripción del puesto</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">DescripciÃ³n del puesto</h3>
                 {editing ? (
                   <RichTextEditor
                     value={formData?.description || ''}
@@ -373,7 +438,7 @@ export default function JobDetailPage() {
                     <div className="space-y-3">
                       {formData?.requirements?.map((req: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[#94A3B8]">•</span>
+                          <span className="text-[#94A3B8]">â€¢</span>
                           <input
                             type="text"
                             value={req}
@@ -411,7 +476,7 @@ export default function JobDetailPage() {
                     <div className="space-y-3">
                       {formData?.benefits?.map((ben: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[#94A3B8]">•</span>
+                          <span className="text-[#94A3B8]">â€¢</span>
                           <input
                             type="text"
                             value={ben}
@@ -494,7 +559,7 @@ export default function JobDetailPage() {
                   </Table>
                 ) : (
                   <p className="text-sm text-[#64748B] py-4 text-center">
-                    Aún no hay postulaciones para esta vacante.
+                    AÃºn no hay postulaciones para esta vacante.
                   </p>
                 )}
                 {applicationsList.length > 10 && (
@@ -502,7 +567,7 @@ export default function JobDetailPage() {
                     href={`/candidates?jobId=${id}`}
                     className="mt-3 inline-block text-sm text-[#0B5CFF] hover:text-[#004BDD]"
                   >
-                    Ver todas las postulaciones →
+                    Ver todas las postulaciones â†’
                   </Link>
                 )}
               </CardContent>
@@ -511,10 +576,10 @@ export default function JobDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Límites del plan */}
+            {/* LÃ­mites del plan */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Límites de tu plan</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-2">LÃ­mites de tu plan</h3>
                 <p className="text-sm text-[#64748B] mb-6">Plan {planLimits?.plan?.name || 'Profesional'}</p>
                 <div className="space-y-5">
                   <div>
@@ -604,10 +669,10 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Acciones rápidas */}
+            {/* Acciones rÃ¡pidas */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Acciones rápidas</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Acciones rÃ¡pidas</h3>
                 <div className="space-y-2">
                   <Link href={`/candidates?jobId=${id}`}>
                     <Button variant="outline" className="w-full justify-start">
@@ -645,9 +710,9 @@ export default function JobDetailPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FEECEC]">
               <Trash2 className="h-6 w-6 text-[#EF4444]" />
             </div>
-            <h3 className="text-lg font-semibold text-[#0F172A]">¿Eliminar vacante?</h3>
+            <h3 className="text-lg font-semibold text-[#0F172A]">Â¿Eliminar vacante?</h3>
             <p className="mt-2 text-sm text-[#64748B]">
-              Esta acción no se puede deshacer. Se eliminarán todas las postulaciones asociadas.
+              Esta acciÃ³n no se puede deshacer. Se eliminarÃ¡n todas las postulaciones asociadas.
             </p>
             <div className="mt-6 flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
@@ -663,5 +728,6 @@ export default function JobDetailPage() {
     </div>
   );
 }
+
 
 

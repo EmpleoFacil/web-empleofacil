@@ -28,7 +28,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { JobPreviewDrawer } from '@/components/jobs/job-preview-drawer';
 import { companies, jobs } from '@/lib/api';
-import { getStatusLabel, getModalityLabel } from '@/lib/utils';
+import { formatDate, getStatusLabel, getModalityLabel } from '@/lib/utils';
 import { listQueryOptions, queryKeys } from '@/lib/query-config';
 
 type JobRow = {
@@ -40,6 +40,7 @@ type JobRow = {
   salaryMax?: number | null;
   status: string;
   createdAt: string;
+  expiresAt?: string | null;
   _count?: { applications: number };
   applications?: number;
 };
@@ -307,7 +308,7 @@ export default function JobsPage() {
               <table className="min-w-full divide-y divide-[#E6ECF5] bg-white">
                 <thead className="bg-[#F8FAFC]">
                   <tr>
-                    {['Puesto', 'Ciudad', 'Modalidad', 'Salario', 'Estado', 'Postulaciones', 'Acciones'].map(
+                    {['Puesto', 'Ciudad', 'Modalidad', 'Salario', 'Caduca', 'Estado', 'Postulaciones', 'Acciones'].map(
                       (col) => (
                         <th
                           key={col}
@@ -322,7 +323,7 @@ export default function JobsPage() {
                 <tbody className="divide-y divide-[#EEF2F7]">
                   {isInitialLoading ? (
                     <tr>
-                      <td className="px-4 py-10 text-center text-sm text-[#64748B]" colSpan={7}>
+                      <td className="px-4 py-10 text-center text-sm text-[#64748B]" colSpan={8}>
                         Cargando vacantes...
                       </td>
                     </tr>
@@ -350,6 +351,9 @@ export default function JobsPage() {
                             {getModalityLabel(job.modality)}
                           </td>
                           <td className="px-4 py-3 text-sm text-[#334155]">{salaryText}</td>
+                          <td className="px-4 py-3 text-sm text-[#475569]">
+                            {job.expiresAt ? formatDate(job.expiresAt) : 'Sin fecha'}
+                          </td>
                           <td className="px-4 py-3">
                             <Badge variant={getStatusBadgeVariant(job.status)}>
                               {getStatusLabel(job.status)}

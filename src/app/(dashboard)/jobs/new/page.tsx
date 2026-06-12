@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,11 +18,13 @@ type JobCategory = { id: string; name: string };
 type JobFormData = {
   title: string;
   categoryId: string;
+  customCategory: string;
   city: string;
   modality: string;
   employmentType: string;
   salaryMin: string;
   salaryMax: string;
+  expiresAt: string;
   description: string;
   requirements: string[];
   benefits: string[];
@@ -46,15 +48,23 @@ type PlanLimits = {
 const initialFormData: JobFormData = {
   title: '',
   categoryId: '',
+  customCategory: '',
   city: '',
   modality: 'presencial',
   employmentType: 'tiempo_completo',
   salaryMin: '',
   salaryMax: '',
+  expiresAt: getDefaultExpiryDate(),
   description: '',
   requirements: [],
   benefits: [],
 };
+
+function getDefaultExpiryDate(days = 30) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 function PlanProgress({ label, metric, icon }: { label: string; metric?: PlanMetric; icon: React.ReactNode }) {
   const current = metric?.current ?? 0;
@@ -93,6 +103,11 @@ export default function NewJobPage() {
     queryFn: () => jobs.getCategories().then((res) => res.data as JobCategory[]),
   });
 
+  const categoriesWithOther = useMemo(
+    () => [...(categories ?? []), { id: 'other', name: 'Otros' }],
+    [categories]
+  );
+
   const { data: planLimits } = useQuery({
     queryKey: ['plan-limits'],
     queryFn: () => companies.getPlanLimits().then((res) => res.data as PlanLimits),
@@ -126,8 +141,12 @@ export default function NewJobPage() {
 
     const payload = {
       ...formData,
+      categoryId: formData.categoryId || undefined,
+      customCategory:
+        formData.categoryId === 'other' ? formData.customCategory.trim() || undefined : undefined,
       salaryMin: formData.salaryMin ? parseInt(formData.salaryMin, 10) : undefined,
       salaryMax: formData.salaryMax ? parseInt(formData.salaryMax, 10) : undefined,
+      expiresAt: formData.expiresAt ? new Date(`${formData.expiresAt}T23:59:59`).toISOString() : undefined,
       requirements: formData.requirements.filter((item) => item.trim()),
       benefits: formData.benefits.filter((item) => item.trim()),
       status: publish ? 'active' : 'draft',
@@ -210,12 +229,21 @@ export default function NewJobPage() {
                       className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     >
                       <option value="">Seleccionar categoria</option>
-                      {categories?.map((category) => (
+                      {categoriesWithOther.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
                       ))}
                     </select>
+                    {formData.categoryId === 'other' && (
+                      <input
+                        type="text"
+                        value={formData.customCategory}
+                        onChange={(e) => handleChange('customCategory', e.target.value)}
+                        placeholder="Escribe la categoria"
+                        className="mt-3 h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -284,6 +312,38 @@ export default function NewJobPage() {
                       className="h-11 w-full rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                     />
                   </div>
+
+                  <div className="md:col-span-2 rounded-2xl border border-[#D8E1EE] bg-[#F8FAFC] p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                      <div className="flex-1">
+                        <label className="mb-1.5 block text-sm font-medium text-[#334155]">
+                          Caducidad de la vacante <span className="text-[#EF4444]">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.expiresAt}
+                          min={new Date().toISOString().slice(0, 10)}
+                          onChange={(e) => handleChange('expiresAt', e.target.value)}
+                          className="h-11 w-full rounded-lg border border-[#D1D9E6] bg-white px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
+                        />
+                        <p className="mt-2 text-xs text-[#64748B]">
+                          Al llegar esta fecha, la vacante se cerrara automaticamente.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {[15, 30, 45, 60].map((days) => (
+                          <button
+                            key={days}
+                            type="button"
+                            onClick={() => handleChange('expiresAt', getDefaultExpiryDate(days))}
+                            className="rounded-full border border-[#D1D9E6] bg-white px-3 py-2 text-xs font-semibold text-[#334155] transition hover:border-[#0B5CFF] hover:text-[#0B5CFF]"
+                          >
+                            {days} dias
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -303,25 +363,35 @@ export default function NewJobPage() {
             </Card>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <OptionChecklistPicker
-                title="Requisitos"
-                accent="green"
-                categories={REQUIREMENT_CATEGORIES}
-                selected={formData.requirements}
-                onChange={(items) => handleChange('requirements', items)}
-                max={10}
-                searchPlaceholder="Buscar o agregar requisito"
-              />
+              <div className="space-y-2">
+                <OptionChecklistPicker
+                  title="Requisitos"
+                  accent="green"
+                  categories={REQUIREMENT_CATEGORIES}
+                  selected={formData.requirements}
+                  onChange={(items) => handleChange('requirements', items)}
+                  max={10}
+                  searchPlaceholder="Buscar o agregar requisito"
+                />
+                <p className="px-2 text-sm text-[#64748B]">
+                  Puedes elegir sugerencias o escribir uno propio y agregarlo.
+                </p>
+              </div>
 
-              <OptionChecklistPicker
-                title="Beneficios"
-                accent="blue"
-                categories={BENEFIT_CATEGORIES}
-                selected={formData.benefits}
-                onChange={(items) => handleChange('benefits', items)}
-                max={10}
-                searchPlaceholder="Buscar o agregar beneficio"
-              />
+              <div className="space-y-2">
+                <OptionChecklistPicker
+                  title="Beneficios"
+                  accent="blue"
+                  categories={BENEFIT_CATEGORIES}
+                  selected={formData.benefits}
+                  onChange={(items) => handleChange('benefits', items)}
+                  max={10}
+                  searchPlaceholder="Buscar o agregar beneficio"
+                />
+                <p className="px-2 text-sm text-[#64748B]">
+                  Si no aparece el beneficio, puedes escribirlo manualmente y agregarlo.
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-4">
@@ -333,7 +403,12 @@ export default function NewJobPage() {
                 </Button>
                 <Button
                   onClick={() => handleSubmit(true)}
-                  disabled={createMutation.isPending || !formData.title}
+                  disabled={
+                    createMutation.isPending ||
+                    !formData.title ||
+                    !formData.expiresAt ||
+                    (formData.categoryId === 'other' && !formData.customCategory.trim())
+                  }
                 >
                   <Send className="h-4 w-4" />
                   Publicar vacante
