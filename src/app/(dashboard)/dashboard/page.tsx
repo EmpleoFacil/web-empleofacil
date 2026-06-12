@@ -16,7 +16,6 @@ import {
   Video,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Header } from '@/components/ui/header';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
@@ -123,7 +122,6 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const router = useRouter();
 
   const [dashboardQuery, planLimitsQuery] = useQueries({
     queries: [
@@ -191,10 +189,10 @@ export default function DashboardPage() {
 
   const handlePublishClick = () => {
     if (!canPublish) {
-      router.push('/settings?quotaExceeded=jobs');
+      window.location.href = '/settings?quotaExceeded=jobs';
       return;
     }
-    router.push('/jobs/new');
+    window.location.href = '/jobs/new';
   };
 
   return (

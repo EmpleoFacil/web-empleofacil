@@ -162,7 +162,7 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Header title={jobData.title} subtitle="Detalle y ediciÃ³n de la vacante." />
+      <Header title={jobData.title} subtitle="Detalle y edición de la vacante." />
 
       <div className="p-6">
         <div className="mb-6 flex items-center justify-between">
@@ -204,15 +204,15 @@ export default function JobDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* InformaciÃ³n general */}
+            {/* Información general */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-6">InformaciÃ³n general</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-6">Información general</h3>
                 {editing ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-[#334155] mb-1.5">
-                        TÃ­tulo del puesto <span className="text-[#EF4444]">*</span>
+                        Título del puesto <span className="text-[#EF4444]">*</span>
                       </label>
                       <input
                         type="text"
@@ -223,13 +223,13 @@ export default function JobDetailPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#334155] mb-1.5">CategorÃ­a</label>
+                      <label className="block text-sm font-medium text-[#334155] mb-1.5">Categoría</label>
                       <select
                         value={formData?.categoryId || ''}
                         onChange={(e) => handleChange('categoryId', e.target.value)}
                         className="w-full h-11 rounded-lg border border-[#D1D9E6] px-4 text-sm focus:border-[#0B5CFF] focus:outline-none"
                       >
-                        <option value="">Seleccionar categorÃ­a</option>
+                        <option value="">Seleccionar categoría</option>
                         {categories?.map((cat: { id: string; name: string }) => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
@@ -254,7 +254,7 @@ export default function JobDetailPage() {
                       >
                         <option value="presencial">Presencial</option>
                         <option value="remoto">Remoto</option>
-                        <option value="hibrido">HÃ­brido</option>
+                        <option value="hibrido">Híbrido</option>
                       </select>
                     </div>
                     <div>
@@ -296,8 +296,8 @@ export default function JobDetailPage() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
-                      <p className="text-xs text-[#64748B] mb-1">CategorÃ­a</p>
-                      <p className="text-sm font-medium text-[#0F172A]">{jobData.category?.name || 'Sin categorÃ­a'}</p>
+                      <p className="text-xs text-[#64748B] mb-1">Categoría</p>
+                      <p className="text-sm font-medium text-[#0F172A]">{jobData.category?.name || 'Sin categoría'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-[#64748B] mb-1">Ciudad</p>
@@ -344,10 +344,10 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
-            {/* DescripciÃ³n */}
+            {/* Descripción */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">DescripciÃ³n del puesto</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Descripción del puesto</h3>
                 {editing ? (
                   <RichTextEditor
                     value={formData?.description || ''}
@@ -373,7 +373,7 @@ export default function JobDetailPage() {
                     <div className="space-y-3">
                       {formData?.requirements?.map((req: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[#94A3B8]">â€¢</span>
+                          <span className="text-[#94A3B8]">•</span>
                           <input
                             type="text"
                             value={req}
@@ -411,7 +411,7 @@ export default function JobDetailPage() {
                     <div className="space-y-3">
                       {formData?.benefits?.map((ben: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <span className="text-[#94A3B8]">â€¢</span>
+                          <span className="text-[#94A3B8]">•</span>
                           <input
                             type="text"
                             value={ben}
@@ -494,7 +494,7 @@ export default function JobDetailPage() {
                   </Table>
                 ) : (
                   <p className="text-sm text-[#64748B] py-4 text-center">
-                    AÃºn no hay postulaciones para esta vacante.
+                    Aún no hay postulaciones para esta vacante.
                   </p>
                 )}
                 {applicationsList.length > 10 && (
@@ -502,7 +502,7 @@ export default function JobDetailPage() {
                     href={`/candidates?jobId=${id}`}
                     className="mt-3 inline-block text-sm text-[#0B5CFF] hover:text-[#004BDD]"
                   >
-                    Ver todas las postulaciones â†’
+                    Ver todas las postulaciones →
                   </Link>
                 )}
               </CardContent>
@@ -511,10 +511,10 @@ export default function JobDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* LÃ­mites del plan */}
+            {/* Límites del plan */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-2">LÃ­mites de tu plan</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-2">Límites de tu plan</h3>
                 <p className="text-sm text-[#64748B] mb-6">Plan {planLimits?.plan?.name || 'Profesional'}</p>
                 <div className="space-y-5">
                   <div>
@@ -604,10 +604,10 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Acciones rÃ¡pidas */}
+            {/* Acciones rápidas */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Acciones rÃ¡pidas</h3>
+                <h3 className="text-lg font-semibold text-[#0F172A] mb-4">Acciones rápidas</h3>
                 <div className="space-y-2">
                   <Link href={`/candidates?jobId=${id}`}>
                     <Button variant="outline" className="w-full justify-start">
@@ -645,9 +645,9 @@ export default function JobDetailPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FEECEC]">
               <Trash2 className="h-6 w-6 text-[#EF4444]" />
             </div>
-            <h3 className="text-lg font-semibold text-[#0F172A]">Â¿Eliminar vacante?</h3>
+            <h3 className="text-lg font-semibold text-[#0F172A]">¿Eliminar vacante?</h3>
             <p className="mt-2 text-sm text-[#64748B]">
-              Esta acciÃ³n no se puede deshacer. Se eliminarÃ¡n todas las postulaciones asociadas.
+              Esta acción no se puede deshacer. Se eliminarán todas las postulaciones asociadas.
             </p>
             <div className="mt-6 flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>

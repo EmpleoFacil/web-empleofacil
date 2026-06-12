@@ -83,26 +83,26 @@ export default function SettingsPage() {
     if (quotaExceeded === "jobs") {
       return {
         type: "jobs",
-        title: "Â¡Se acabÃ³ tu cuota de vacantes!",
+        title: "¡Se acabó tu cuota de vacantes!",
         message:
-          "Has alcanzado el nÃºmero mÃ¡ximo de vacantes activas permitidas por tu plan actual. Mejora tu plan para continuar publicando vacantes y encontrar talento ideal.",
+          "Has alcanzado el número máximo de vacantes activas permitidas por tu plan actual. Mejora tu plan para continuar publicando vacantes y encontrar talento ideal.",
       };
     }
 
     if (quotaExceeded === "users") {
       return {
         type: "users",
-        title: "Â¡Se acabÃ³ tu cuota de usuarios!",
+        title: "¡Se acabó tu cuota de usuarios!",
         message:
-          "Has alcanzado el nÃºmero mÃ¡ximo de usuarios permitidos en tu empresa. Mejora tu plan para agregar mÃ¡s miembros a tu equipo.",
+          "Has alcanzado el número máximo de usuarios permitidos en tu empresa. Mejora tu plan para agregar más miembros a tu equipo.",
       };
     }
 
     return {
       type: "general",
-      title: "Â¡LÃ­mite de cuota alcanzado!",
+      title: "¡Límite de cuota alcanzado!",
       message:
-        "Has alcanzado uno de los lÃ­mites de capacidad en tu plan actual. Mejora tu plan para seguir creciendo.",
+        "Has alcanzado uno de los límites de capacidad en tu plan actual. Mejora tu plan para seguir creciendo.",
     };
   });
   const [flashPlans, setFlashPlans] = useState(false);
@@ -268,7 +268,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       <Header
         title="Empresa y plan"
-        subtitle="Administra la informaci?n de tu empresa, usuarios y tu plan de suscripci?n."
+        subtitle="Administra la información de tu empresa, usuarios y tu plan de suscripción."
         actions={
           <Button
             className="h-11"
@@ -289,7 +289,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-5 p-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-[#0F172A]">
-                  Informaci?n de la empresa
+                  Información de la empresa
                 </h3>
                 <button
                   type="button"
@@ -344,7 +344,7 @@ export default function SettingsPage() {
                       : "Cambiar logo"}
                   </Button>
                   <p className="mt-2 text-xs text-[#64748B]">
-                    Formatos: PNG, JPG. Tama?o max: 2MB
+                    Formatos: PNG, JPG. Tamaño max: 2MB
                   </p>
                 </div>
 
@@ -609,7 +609,7 @@ export default function SettingsPage() {
                       "Plan"}
                   </p>
                   <p className="text-sm text-[#64748B]">
-                    Renovaci?n:{" "}
+                    Renovación:{" "}
                     {billingPlan?.renewalDate
                       ? new Date(billingPlan.renewalDate).toLocaleDateString(
                           "es-NI",

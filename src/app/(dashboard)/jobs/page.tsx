@@ -27,7 +27,7 @@ import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { JobPreviewDrawer } from '@/components/jobs/job-preview-drawer';
-import { jobs } from '@/lib/api';
+import { companies, jobs } from '@/lib/api';
 import { getStatusLabel, getModalityLabel } from '@/lib/utils';
 import { listQueryOptions, queryKeys } from '@/lib/query-config';
 
@@ -79,6 +79,12 @@ export default function JobsPage() {
   const { data: summary } = useQuery({
     queryKey: queryKeys.jobsCompanySummary,
     queryFn: () => jobs.getCompanySummary().then((res) => res.data),
+    ...listQueryOptions,
+  });
+
+  const { data: planLimits } = useQuery({
+    queryKey: ['plan-limits'],
+    queryFn: () => companies.getPlanLimits().then((res) => res.data),
     ...listQueryOptions,
   });
 
@@ -189,6 +195,15 @@ export default function JobsPage() {
   const items = jobsData?.items ?? [];
   const cityOptions = Array.from(new Set(items.map((job) => job.city).filter(Boolean) as string[])).sort();
   const isInitialLoading = isFetching && !jobsData;
+  const canCreateJob = (planLimits?.limits?.activeJobs?.remaining ?? 0) > 0;
+
+  const handleCreateJobClick = () => {
+    if (!canCreateJob) {
+      window.location.href = '/settings?quotaExceeded=jobs';
+      return;
+    }
+    window.location.href = '/jobs/new';
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -197,12 +212,10 @@ export default function JobsPage() {
         subtitle="Administra y publica las oportunidades laborales de tu empresa."
         actions={
           <>
-            <Link href="/jobs/new">
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nueva vacante
-              </Button>
-            </Link>
+            <Button className="gap-2" onClick={handleCreateJobClick}>
+              <Plus className="h-4 w-4" />
+              Nueva vacante
+            </Button>
             <Button variant="outline" onClick={() => setShowFilters((prev) => !prev)}>
               <Filter className="h-4 w-4" />
               Filtros

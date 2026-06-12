@@ -119,6 +119,11 @@ export default function NewJobPage() {
   const handleSubmit = (publish: boolean) => {
     setDraftSaved(false);
 
+    if (publish && !canPublish) {
+      router.push('/settings?quotaExceeded=jobs');
+      return;
+    }
+
     const payload = {
       ...formData,
       salaryMin: formData.salaryMin ? parseInt(formData.salaryMin, 10) : undefined,
@@ -328,7 +333,7 @@ export default function NewJobPage() {
                 </Button>
                 <Button
                   onClick={() => handleSubmit(true)}
-                  disabled={createMutation.isPending || !canPublish || !formData.title}
+                  disabled={createMutation.isPending || !formData.title}
                 >
                   <Send className="h-4 w-4" />
                   Publicar vacante
