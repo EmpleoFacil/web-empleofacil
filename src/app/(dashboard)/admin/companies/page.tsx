@@ -295,11 +295,18 @@ function CompanyModal({
           className="space-y-3 p-5"
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmit({ name, email, city, planId: selectedPlanId || undefined });
+            const normalizedName = name.trim();
+            if (!normalizedName) return;
+            onSubmit({
+              name: normalizedName,
+              ...(email.trim() ? { email: email.trim() } : {}),
+              ...(city.trim() ? { city: city.trim() } : {}),
+              ...(selectedPlanId ? { planId: selectedPlanId } : {}),
+            });
           }}
         >
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la empresa" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" required />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo corporativo" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo corporativo" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
           <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ciudad" className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm" />
           <select value={selectedPlanId} onChange={(e) => setSelectedPlanId(e.target.value)} className="h-11 w-full rounded-xl border border-[#E6ECF5] px-3 text-sm">
             <option value="">Sin plan</option>
